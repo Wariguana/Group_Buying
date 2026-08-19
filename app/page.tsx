@@ -1,4 +1,4 @@
-import Image from "next/image";
+import Image from "next/image";123243234234
 
 export default function Index() {
   return (
