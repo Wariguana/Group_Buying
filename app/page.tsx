@@ -59,7 +59,7 @@ export default function Index() {
               placeholder="帳號"
               value={account}
               onChange={(e) => setAccount(e.target.value)}
-              className="flex-1 w-full rounded-lg border border-slate-300 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className="text-black flex-1 w-full rounded-lg border border-slate-300 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
             />
           </label>
 
@@ -70,7 +70,7 @@ export default function Index() {
               placeholder="密碼"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="flex-1 w-full rounded-lg border border-slate-300 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              className="text-black flex-1 w-full rounded-lg border border-slate-300 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
             />
           </label>
 
