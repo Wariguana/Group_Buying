@@ -13,15 +13,17 @@
 - 核心資料表：`User`、`Store`、`Customer`、`GroupBuy`、`GroupBuyStore`、`Order`。
 - 核心 enum：使用者角色、團購狀態、訂單狀態。
 - 共用 Prisma Client 基礎，供後端 API 使用。
+- 管理員帳密雜湊登入、HttpOnly Cookie session、登出端點與受保護的管理端首頁。
+- 開發用總公司／分店管理員 seed 腳本。
 
 ### 尚未完成
 
-- 正式帳號登入、密碼雜湊、session 與總公司／分店權限。
 - 門市、團購、訂單與客戶管理功能。
+- 各 API 的完整總公司／分店授權規則與帳號管理畫面。
 - LINE Login、LIFF、Messaging API 與通知。
 - 客戶下單、取貨、取消、逾期未取、報表與 Excel 匯出。
 
-> 目前登入 API 仍使用暫時示範帳密，絕不可部署到正式環境。
+> 使用登入功能前，必須先設定 `AUTH_SECRET` 並透過 seed 建立管理員帳號；不可在程式碼中寫死帳密。
 
 ## 技術架構
 
@@ -29,6 +31,8 @@
 - PostgreSQL：核心關聯式資料庫
 - Supabase：代管 PostgreSQL 與後續商品圖片儲存
 - Prisma 7：資料模型、migration 與型別安全的資料庫存取
+- bcryptjs：密碼雜湊與驗證
+- jose：簽署與驗證管理員 session
 
 ## 加入專案前的環境準備
 
@@ -74,6 +78,7 @@ npx prisma generate
 npx prisma migrate dev --name <migration-name>
 npx prisma migrate status
 npx prisma studio
+npm run db:seed
 ```
 
 `npm install` 與 `npm ci` 完成後會自動執行 `prisma generate`。`generated/` 是自動產生的 Prisma Client，已被 Git 忽略，不需提交。
@@ -99,6 +104,24 @@ NEXT_PUBLIC_LIFF_ID=
 ```
 
 資料庫密碼、Supabase 金鑰、LINE Secret、Access Token 都不可寫入程式碼、README 或 Git。
+
+## 初始管理員帳號
+
+先在 `.env.local` 設定 `AUTH_SECRET`。可在 PowerShell 產生一組安全值：
+
+```powershell
+$bytes = New-Object byte[] 32
+[System.Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
+[Convert]::ToBase64String($bytes)
+```
+
+接著填寫 `.env.local` 中全部 `SEED_` 開頭的欄位，再執行：
+
+```powershell
+npm run db:seed
+```
+
+此腳本會建立一個總公司管理員、一間測試分店與一個分店管理員；如果同名帳號或分店已存在，腳本不會覆寫原有資料或密碼。
 
 ## 資料庫原則
 
@@ -136,8 +159,8 @@ public/                公開靜態素材
 
 ## 開發順序
 
-1. 真實管理員登入、session 與角色權限。
-2. 門市管理。
+1. 建立初始管理員資料與帳號管理畫面。
+2. 門市管理與完整角色授權。
 3. 總公司與分店開團。
 4. LINE 客戶身分辨識與下單。
 5. 到貨、取貨付款、取消與逾期未取。

@@ -2,35 +2,46 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { FormEvent, useState } from "react";
 
 export default function Index() {
 
   const router = useRouter();
-  const [account, setAccount] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const handleLogin = async () => {
-    console.log("Index: 開始登入");
-    console.log("Index: 帳號>>", account);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const response = await fetch("/api/login", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        account,
-        password,
-      }),
-    });
+  const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setErrorMessage("");
+    setIsSubmitting(true);
 
-    const data = await response.json();
+    try {
+      const response = await fetch("/api/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          username,
+          password,
+        }),
+      });
 
-    if (response.ok) {
-      console.log("登入成功");
-      router.push("/home");
-    } else {
-      console.log("登入失敗:", data.message);
+      const data = (await response.json()) as { message?: string };
+
+      if (response.ok) {
+        router.replace("/home");
+        router.refresh();
+        return;
+      }
+
+      setErrorMessage(data.message ?? "登入失敗，請稍後再試。");
+    } catch {
+      setErrorMessage("無法連線到伺服器，請稍後再試。");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -51,14 +62,16 @@ export default function Index() {
           />
         </div>
 
-        <form className="mt-8 space-y-5">
+          <form className="mt-8 space-y-5" onSubmit={handleLogin}>
           <label className="flex items-center gap-4">
             <span className="w-10 shrink-0 text-lg font-medium text-slate-700">帳號</span>
             <input
               type="text"
               placeholder="帳號"
-              value={account}
-              onChange={(e) => setAccount(e.target.value)}
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              autoComplete="username"
+              required
               className="text-black flex-1 w-full rounded-lg border border-slate-300 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
             />
           </label>
@@ -70,16 +83,24 @@ export default function Index() {
               placeholder="密碼"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+              required
               className="text-black flex-1 w-full rounded-lg border border-slate-300 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
             />
           </label>
 
+          {errorMessage ? (
+            <p className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
+              {errorMessage}
+            </p>
+          ) : null}
+
           <button
-            type="button"
-            onClick={handleLogin}
-            className="mt-10 w-full mx-auto block rounded-lg bg-[#007F83] py-3 font-medium text-white transition hover:bg-[#55AFB9]"
+            type="submit"
+            disabled={isSubmitting}
+            className="mt-10 block w-full rounded-lg bg-[#007F83] py-3 font-medium text-white transition hover:bg-[#55AFB9] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            登入
+            {isSubmitting ? "登入中…" : "登入"}
           </button>
         </form>
       </section>
