@@ -1,162 +1,151 @@
-團購系統
-總公司＋分店＋LINE Bot＋客戶下單網站的團購管理系統。
-完整第一版規格請見：Google Docs 規格文件
-專案目前狀態
-目前為基礎開發階段。
-已完成：
-- 基本登入頁面。
-- 基本首頁。
-- Next.js 專案基礎設定。
-尚未完成：
-- 正式帳號登入與 session。
-- 總公司／分店權限。
-- PostgreSQL／Supabase／Prisma 串接。
-- 團購、訂單、門市、客戶資料表。
-- LINE Login、LIFF、LINE 通知。
-- 客戶下單、取貨管理、報表與 Excel 匯出。
-目前登入功能僅為暫時示範，不可用於正式環境。
+# 團購系統
 
-技術架構
-目前已安裝
-- Next.js 16
-- React 19
-- TypeScript
-- Tailwind CSS
-- ESLint
-- Prettier - Code formatter
-規劃加入
-- PostgreSQL：核心關聯式資料庫。
-- Supabase：代管 PostgreSQL 與商品圖片儲存。
-- Prisma：資料模型、資料庫 migration 與型別安全查詢。
-- LINE Login／LIFF：客戶身分辨識。
-- LINE Messaging API：訂單、取消與通知訊息。
-加入專案前的環境準備
+總公司、分店、LINE Bot 與客戶下單網站共用的團購管理系統。
+
+## 目前狀態
+
+### 已完成
+
+- Next.js、React、TypeScript 與 Tailwind CSS 專案基礎。
+- 管理端登入畫面與暫時首頁。
+- Supabase 開發資料庫與 PostgreSQL 連線。
+- Prisma 7 設定、資料模型、第一版 migration 與 Prisma Client。
+- 核心資料表：`User`、`Store`、`Customer`、`GroupBuy`、`GroupBuyStore`、`Order`。
+- 核心 enum：使用者角色、團購狀態、訂單狀態。
+- 共用 Prisma Client 基礎，供後端 API 使用。
+
+### 尚未完成
+
+- 正式帳號登入、密碼雜湊、session 與總公司／分店權限。
+- 門市、團購、訂單與客戶管理功能。
+- LINE Login、LIFF、Messaging API 與通知。
+- 客戶下單、取貨、取消、逾期未取、報表與 Excel 匯出。
+
+> 目前登入 API 仍使用暫時示範帳密，絕不可部署到正式環境。
+
+## 技術架構
+
+- Next.js 16、React 19、TypeScript、Tailwind CSS
+- PostgreSQL：核心關聯式資料庫
+- Supabase：代管 PostgreSQL 與後續商品圖片儲存
+- Prisma 7：資料模型、migration 與型別安全的資料庫存取
+
+## 加入專案前的環境準備
+
 請先安裝：
+
 - Git
-- Node.js 24 LTS
-- npm（隨 Node.js 安裝）
+- Node.js 24 LTS 與 npm
 - Visual Studio Code（建議）
-- GitHub repository 存取權限
-- Supabase 專案存取權限（資料庫功能開始後需要）
-使用 Supabase 後，開發者不需要在本機另外安裝 PostgreSQL。
-建議 VS Code 擴充功能
+- GitHub repository 與 Supabase 專案的存取權限
+
+建議 VS Code 擴充功能：
+
 - ESLint
 - Tailwind CSS IntelliSense
-- Prisma（Prisma 加入專案後需要
-第一次啟動專案
+- Prisma
+- Prettier - Code formatter
+
+使用 Supabase 開發時，不需要在本機另行安裝 PostgreSQL。
+
+## 第一次啟動
+
+```powershell
 git clone <repository-url>
 cd group_buying
 npm ci
+Copy-Item .env.example .env.local
 npm run dev
-開啟瀏覽器：
-http://localhost:3000
-常用指令
-npm run dev
-啟動本機開發伺服器。
-npm run lint
-檢查程式碼格式與常見問題。
-npm run build
-建立正式環境版本；提交前建議執行一次。
-npm run start
-執行已建立完成的正式版本。
-Prisma 加入後的常用指令
-以下指令需等 Prisma 正式加入專案後才能使用。
+```
 
+接著依 Supabase 專案的 **Connect → ORM → Prisma** 資訊，填入 `.env.local` 的 `DATABASE_URL` 與 `DIRECT_URL`。`.env.local` 不可提交到 GitHub。
+
+開啟 [http://localhost:3000](http://localhost:3000)。
+
+## 常用指令
+
+```powershell
+npm run dev
+npm run lint
+npm run build
+npx prisma format
+npx prisma validate
 npx prisma generate
-產生 Prisma Client。
 npx prisma migrate dev --name <migration-name>
-建立並套用開發環境資料表變更。
+npx prisma migrate status
 npx prisma studio
-開啟本機資料庫管理介面。
-npx prisma migrate deploy
-在正式環境套用已核准的 migration。
-環境變數
-建立本機環境檔案：
-cp .env.example .env.local
-.env.local 僅限本機使用，不可提交到 GitHub。
-未來預計使用的環境變數：
-# PostgreSQL / Supabase
+```
+
+`npm install` 與 `npm ci` 完成後會自動執行 `prisma generate`。`generated/` 是自動產生的 Prisma Client，已被 Git 忽略，不需提交。
+
+## 環境變數
+
+請從 `.env.example` 建立自己的 `.env.local`。目前實際使用：
+
+```text
 DATABASE_URL=
 DIRECT_URL=
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
+```
 
-# 網站與登入
+未來可能加入：
+
+```text
 NEXT_PUBLIC_APP_URL=
 AUTH_SECRET=
-
-# LINE
 LINE_CHANNEL_ID=
 LINE_CHANNEL_SECRET=
 LINE_CHANNEL_ACCESS_TOKEN=
 NEXT_PUBLIC_LIFF_ID=
-注意事項：
-- 不可將資料庫密碼、Supabase 金鑰、LINE Secret 或 Access Token 寫進程式碼。
-- 不可將 .env.local 上傳至 GitHub。
-- 正式環境、測試環境與本機開發環境應使用不同的資料庫與金鑰。
-資料庫原則
-第一版資料庫採用：
-PostgreSQL + Supabase + Prisma
-核心資料模型預計包含：
-- User：總公司管理員與分店管理員。
-- Store：門市基本資料與 LINE 群組設定。
-- Customer：LINE user ID、顯示名稱與手機。
-- GroupBuy：一團一商品的團購資料。
-- GroupBuyStore：參與門市與各店取貨時間。
-- Order：客戶訂單與下單當下的價格快照。
-原則：
-- 商品圖片存放於 Supabase Storage。
-- 資料表結構修改必須透過 Prisma migration。
-- 不可直接修改正式資料庫結構後卻沒有 migration。
-- 總公司、分店與客戶權限一律在伺服器端檢查。
-專案目錄
+```
+
+資料庫密碼、Supabase 金鑰、LINE Secret、Access Token 都不可寫入程式碼、README 或 Git。
+
+## 資料庫原則
+
+- 所有 schema 變更必須透過 Prisma migration。
+- 第一版採「一團一商品」；商品資料直接保存於 `GroupBuy`。
+- `GroupBuyStore` 表示參與團購的分店與該店取貨時間。
+- 訂單連到 `GroupBuyStore`，確保訂單只能屬於有參與該團的門市。
+- 訂單保存商品名稱、單價、單位、數量與金額快照。
+- 總公司、分店與客戶的權限必須在伺服器端驗證。
+
+## 目錄結構
+
+```text
 app/
-  api/              API 路由
-  home/             管理後台首頁
-  page.tsx          登入頁
-  layout.tsx        全站 layout
-  globals.css       全站樣式
+  api/                 API 路由
+  home/                管理端首頁
+  lib/prisma.ts        共用 Prisma Client（只限伺服器端）
+  page.tsx             登入頁
 
-public/             公開靜態圖片與素材
+prisma/
+  schema.prisma        Prisma 資料模型
+  migrations/          已核准的資料庫結構歷程
 
-prisma/             Prisma schema 與 migration
-                    （Prisma 加入後建立）
-帳號與權限規則
-- 總公司管理員：可管理全部門市、團購、訂單與報表。
-- 分店管理員：只能管理自己所屬門市的資料。
-- 客戶：透過 LINE 身分辨識，可跨門市查看自己的訂單。
-- 客戶的門市歸屬由訂單決定，不寫在 Customer 身上。
-- 所有權限限制必須在後端驗證，不可只依賴前端畫面隱藏。
-開發流程
-1. 從 main 拉取最新程式。
-2. 建立自己的功能分支。
-3. 安裝套件並設定 .env.local。
-4. 完成功能後執行：
-   npm run lint
-   npm run build
-5. 建立 Pull Request。
-6. 經確認後再合併至主分支。
-建議開發順序
-1. PostgreSQL、Supabase、Prisma 與帳號權限基礎。
+public/                公開靜態素材
+.env.example           環境變數範本
+```
+
+## 開發流程
+
+1. 從 `main` 拉取最新程式並建立功能分支。
+2. 設定自己的 `.env.local`。
+3. 完成功能後執行 `npm run lint` 與 `npm run build`。
+4. 若 schema 有變更，建立 Prisma migration 並一併提交。
+5. 建立 Pull Request，確認後再合併。
+
+## 開發順序
+
+1. 真實管理員登入、session 與角色權限。
 2. 門市管理。
-3. 總公司開團與分店開團。
-4. 客戶 LINE 身分辨識與下單。
-5. 訂單到貨、取貨付款、取消與逾期未取。
-6. LINE 通知。
-7. 報表與 Excel 匯出。
-8. 介面與行動版體驗優化。
-安全規則
-- 不提交 .env.local、Token、密碼或正式資料。
+3. 總公司與分店開團。
+4. LINE 客戶身分辨識與下單。
+5. 到貨、取貨付款、取消與逾期未取。
+6. LINE 通知、報表與 Excel 匯出。
+
+## 安全規則
+
+- 不提交 `.env.local`、Token、密碼或正式客戶資料。
 - 不在測試環境使用真實客戶個資。
-- 不使用寫死帳號密碼作為正式登入機制。
-- 上線前必須確認資料庫備份、權限規則與 LINE 金鑰管理方式。
-費用提醒
-- PostgreSQL：免費開源軟體。
-- Prisma ORM：免費開源工具。
-- Supabase：開發期可先使用免費方案。
-- 正式上線後，需評估 Supabase、網站主機、網域與 LINE 訊息費用。
-待確認項目
-- 到貨通知的發送對象與時機。
-- 報表完整欄位與計算公式。
-- LINE 正式 Channel、LIFF 與 Messaging API 設定。
-- 正式資料庫 schema 與 API 設計。
+- 不使用寫死帳密作為正式登入機制。
+- 正式上線前確認資料庫備份、權限規則與 LINE 金鑰管理方式。

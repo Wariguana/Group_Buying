@@ -1,0 +1,158 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  HQ_ADMIN
+  STORE_ADMIN
+}
+
+enum GroupBuyStatus {
+  DRAFT
+  PUBLISHED
+  PAUSED
+  ENDED
+}
+
+enum OrderStatus {
+  ORDERED
+  ARRIVED
+  PICKED_UP_PAID
+  CANCELED
+  EXPIRED_UNCOLLECTED
+}
+
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String
+  role         UserRole
+  enabled      Boolean  @default(true)
+
+  // 總公司管理員不屬於特定分店；分店管理員必須綁定一間分店。
+  storeId String? @unique
+  store   Store?  @relation(fields: [storeId], references: [id])
+
+  createdGroupBuys GroupBuy[] @relation("GroupBuyCreator")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Store {
+  id          String  @id @default(cuid())
+  name        String
+  address     String
+  phone       String
+  lineGroupId String? @unique
+  enabled     Boolean @default(true)
+
+  admin             User?
+  groupBuyStores    GroupBuyStore[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Customer {
+  id            String  @id @default(cuid())
+  lineUserId    String  @unique
+  displayName   String?
+  phone         String?
+
+  orders Order[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model GroupBuy {
+  id        String          @id @default(cuid())
+  title     String
+  content   String?
+  imageUrls String[]
+
+  // 一團一商品：商品資訊直接跟著團購保存。
+  productName        String
+  unit               String?
+  originalPrice      Decimal? @db.Decimal(12, 2)
+  groupPrice         Decimal  @db.Decimal(12, 2)
+  perCustomerLimit   Int?
+  minimumQuantity    Int      @default(1)
+  quantityMultiple   Int      @default(1)
+  totalQuantityLimit Int?
+
+  startAt DateTime
+  endAt   DateTime
+
+  // 總公司開團的預設取貨時間。
+  defaultPickupStart DateTime
+  defaultPickupEnd   DateTime
+
+  status GroupBuyStatus @default(DRAFT)
+
+  createdById String
+  createdBy   User   @relation("GroupBuyCreator", fields: [createdById], references: [id])
+
+  groupBuyStores GroupBuyStore[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model GroupBuyStore {
+  id String @id @default(cuid())
+
+  groupBuyId String
+  storeId    String
+
+  // 建立時先帶入團購預設時間；各分店之後可各自調整。
+  pickupStart DateTime
+  pickupEnd   DateTime
+
+  groupBuy GroupBuy @relation(fields: [groupBuyId], references: [id], onDelete: Cascade)
+  store    Store    @relation(fields: [storeId], references: [id])
+
+  orders Order[]
+
+  @@unique([groupBuyId, storeId])
+}
+
+model Order {
+  id      String @id @default(cuid())
+  orderNo String @unique
+
+  customerId      String
+  groupBuyStoreId String
+
+  // 下單時的商品快照；之後改團購不影響已成立訂單。
+  productName String
+  unit        String?
+  unitPrice   Decimal @db.Decimal(12, 2)
+  quantity    Int
+  totalAmount Decimal @db.Decimal(12, 2)
+  note        String?
+
+  status OrderStatus @default(ORDERED)
+
+  arrivedAt   DateTime?
+  paidAt      DateTime?
+  canceledAt  DateTime?
+  expiredAt   DateTime?
+
+  customer      Customer      @relation(fields: [customerId], references: [id])
+  groupBuyStore GroupBuyStore @relation(fields: [groupBuyStoreId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([customerId])
+  @@index([groupBuyStoreId])
+  @@index([status])
+  @@index([createdAt])
+}
