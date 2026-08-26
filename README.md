@@ -1,36 +1,174 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 團購系統
 
-## Getting Started
+總公司、分店、LINE Bot 與客戶下單網站共用的團購管理系統。
 
-First, run the development server:
+## 目前狀態
 
-```bash
+### 已完成
+
+- Next.js、React、TypeScript 與 Tailwind CSS 專案基礎。
+- 管理端登入畫面與暫時首頁。
+- Supabase 開發資料庫與 PostgreSQL 連線。
+- Prisma 7 設定、資料模型、第一版 migration 與 Prisma Client。
+- 核心資料表：`User`、`Store`、`Customer`、`GroupBuy`、`GroupBuyStore`、`Order`。
+- 核心 enum：使用者角色、團購狀態、訂單狀態。
+- 共用 Prisma Client 基礎，供後端 API 使用。
+- 管理員帳密雜湊登入、HttpOnly Cookie session、登出端點與受保護的管理端首頁。
+- 開發用總公司／分店管理員 seed 腳本。
+
+### 尚未完成
+
+- 門市、團購、訂單與客戶管理功能。
+- 各 API 的完整總公司／分店授權規則與帳號管理畫面。
+- LINE Login、LIFF、Messaging API 與通知。
+- 客戶下單、取貨、取消、逾期未取、報表與 Excel 匯出。
+
+> 使用登入功能前，必須先設定 `AUTH_SECRET` 並透過 seed 建立管理員帳號；不可在程式碼中寫死帳密。
+
+## 技術架構
+
+- Next.js 16、React 19、TypeScript、Tailwind CSS
+- PostgreSQL：核心關聯式資料庫
+- Supabase：代管 PostgreSQL 與後續商品圖片儲存
+- Prisma 7：資料模型、migration 與型別安全的資料庫存取
+- bcryptjs：密碼雜湊與驗證
+- jose：簽署與驗證管理員 session
+
+## 加入專案前的環境準備
+
+請先安裝：
+
+- Git
+- Node.js 24 LTS 與 npm
+- Visual Studio Code（建議）
+- GitHub repository 與 Supabase 專案的存取權限
+
+建議 VS Code 擴充功能：
+
+- ESLint
+- Tailwind CSS IntelliSense
+- Prisma
+- Prettier - Code formatter
+
+使用 Supabase 開發時，不需要在本機另行安裝 PostgreSQL。
+
+## 第一次啟動
+
+```powershell
+git clone <repository-url>
+cd group_buying
+npm ci
+Copy-Item .env.example .env.local
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+接著依 Supabase 專案的 **Connect → ORM → Prisma** 資訊，填入 `.env.local` 的 `DATABASE_URL` 與 `DIRECT_URL`。`.env.local` 不可提交到 GitHub。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+開啟 [http://localhost:3000](http://localhost:3000)。
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 常用指令
 
-## Learn More
+```powershell
+npm run dev
+npm run lint
+npm run build
+npx prisma format
+npx prisma validate
+npx prisma generate
+npx prisma migrate dev --name <migration-name>
+npx prisma migrate status
+npx prisma studio
+npm run db:seed
+```
 
-To learn more about Next.js, take a look at the following resources:
+`npm install` 與 `npm ci` 完成後會自動執行 `prisma generate`。`generated/` 是自動產生的 Prisma Client，已被 Git 忽略，不需提交。
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 環境變數
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+請從 `.env.example` 建立自己的 `.env.local`。目前實際使用：
 
-## Deploy on Vercel
+```text
+DATABASE_URL=
+DIRECT_URL=
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+未來可能加入：
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```text
+NEXT_PUBLIC_APP_URL=
+AUTH_SECRET=
+LINE_CHANNEL_ID=
+LINE_CHANNEL_SECRET=
+LINE_CHANNEL_ACCESS_TOKEN=
+NEXT_PUBLIC_LIFF_ID=
+```
+
+資料庫密碼、Supabase 金鑰、LINE Secret、Access Token 都不可寫入程式碼、README 或 Git。
+
+## 初始管理員帳號
+
+先在 `.env.local` 設定 `AUTH_SECRET`。可在 PowerShell 產生一組安全值：
+
+```powershell
+$bytes = New-Object byte[] 32
+[System.Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
+[Convert]::ToBase64String($bytes)
+```
+
+接著填寫 `.env.local` 中全部 `SEED_` 開頭的欄位，再執行：
+
+```powershell
+npm run db:seed
+```
+
+此腳本會建立一個總公司管理員、一間測試分店與一個分店管理員；如果同名帳號或分店已存在，腳本不會覆寫原有資料或密碼。
+
+## 資料庫原則
+
+- 所有 schema 變更必須透過 Prisma migration。
+- 第一版採「一團一商品」；商品資料直接保存於 `GroupBuy`。
+- `GroupBuyStore` 表示參與團購的分店與該店取貨時間。
+- 訂單連到 `GroupBuyStore`，確保訂單只能屬於有參與該團的門市。
+- 訂單保存商品名稱、單價、單位、數量與金額快照。
+- 總公司、分店與客戶的權限必須在伺服器端驗證。
+
+## 目錄結構
+
+```text
+app/
+  api/                 API 路由
+  home/                管理端首頁
+  lib/prisma.ts        共用 Prisma Client（只限伺服器端）
+  page.tsx             登入頁
+
+prisma/
+  schema.prisma        Prisma 資料模型
+  migrations/          已核准的資料庫結構歷程
+
+public/                公開靜態素材
+.env.example           環境變數範本
+```
+
+## 開發流程
+
+1. 從 `main` 拉取最新程式並建立功能分支。
+2. 設定自己的 `.env.local`。
+3. 完成功能後執行 `npm run lint` 與 `npm run build`。
+4. 若 schema 有變更，建立 Prisma migration 並一併提交。
+5. 建立 Pull Request，確認後再合併。
+
+## 開發順序
+
+1. 建立初始管理員資料與帳號管理畫面。
+2. 門市管理與完整角色授權。
+3. 總公司與分店開團。
+4. LINE 客戶身分辨識與下單。
+5. 到貨、取貨付款、取消與逾期未取。
+6. LINE 通知、報表與 Excel 匯出。
+
+## 安全規則
+
+- 不提交 `.env.local`、Token、密碼或正式客戶資料。
+- 不在測試環境使用真實客戶個資。
+- 不使用寫死帳密作為正式登入機制。
+- 正式上線前確認資料庫備份、權限規則與 LINE 金鑰管理方式。
