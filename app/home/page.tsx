@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { getCurrentUser } from "@/app/lib/auth";
@@ -17,9 +18,18 @@ export default async function Home() {
         <p className="text-sm font-medium text-[#007F83]">團購管理系統</p>
         <h1 className="mt-2 text-3xl font-bold">歡迎回來，{user.username}</h1>
         <p className="mt-3 text-slate-600">你目前以「{roleLabel}」身分登入。</p>
-        <p className="mt-8 rounded-lg bg-slate-50 p-4 text-sm text-slate-600">
-          管理後台功能將從門市管理開始建立。
-        </p>
+        {user.role === "HQ_ADMIN" ? (
+          <Link
+            href="/stores"
+            className="mt-8 inline-flex rounded-lg bg-[#007F83] px-5 py-3 font-medium text-white transition hover:bg-[#55AFB9]"
+          >
+            前往門市管理
+          </Link>
+        ) : (
+          <p className="mt-8 rounded-lg bg-slate-50 p-4 text-sm text-slate-600">
+            目前尚未開放分店管理功能。
+          </p>
+        )}
       </main>
     </div>
   );
