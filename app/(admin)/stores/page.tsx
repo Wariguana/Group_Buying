@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-
 import { getCurrentUser } from "@/app/lib/auth";
-import { StoreForm } from "@/app/stores/store-form";
+import { StoreForm } from "@/app/(admin)/stores/store-form";
 import { prisma } from "@/app/lib/prisma";
 
 export default async function StoresPage() {
@@ -31,15 +30,14 @@ export default async function StoresPage() {
   });
 
   return (
-    <main className="min-h-screen bg-slate-50 p-6 text-slate-900">
-      <section className="mx-auto max-w-6xl">
-        <h1 className="text-3xl font-bold">門市管理</h1>
-        <p className="mt-2 text-slate-600">總公司可查看、新增、編輯與停用所有分店。</p>
+    <section className="rounded-2xl bg-white p-8 shadow-sm">
+      <h1 className="text-3xl font-bold">門市管理</h1>
+      <p className="mt-2 text-slate-600">總公司可查看、新增、編輯與停用所有分店。</p>
 
-        <StoreForm />
+      <StoreForm />
 
-        <div className="mt-8 overflow-hidden rounded-2xl bg-white shadow">
-          <table className="w-full text-left">
+      <div className="mt-8 overflow-hidden rounded-2xl bg-white shadow">
+        <table className="w-full text-left">
             <thead className="bg-slate-100 text-sm text-slate-600">
               <tr>
                 <th className="px-5 py-4">門市名稱</th>
@@ -89,9 +87,8 @@ export default async function StoresPage() {
                 </tr>
               ) : null}
             </tbody>
-          </table>
-        </div>
-      </section>
-    </main>
+        </table>
+      </div>
+    </section>
   );
 }
