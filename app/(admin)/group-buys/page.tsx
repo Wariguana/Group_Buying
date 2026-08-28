@@ -181,9 +181,18 @@ export default async function GroupBuysPage() {
     <section className="rounded-2xl bg-white p-8 shadow-sm">
       <p className="text-sm font-medium text-[#007F83]">分店管理</p>
       <h1 className="mt-2 text-3xl font-bold">團購管理</h1>
-      <p className="mt-2 text-slate-600">
-        這裡只顯示指派給本店的總公司團購；取貨時間調整功能將在下一步加入。
-      </p>
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-4">
+        <p className="text-slate-600">
+          這裡顯示總公司指派給本店，以及本店自行建立的團購。
+        </p>
+
+        <Link
+          href="/group-buys/new"
+          className="rounded-lg bg-[#007F83] px-5 py-3 font-medium text-white transition hover:bg-[#55AFB9]"
+        >
+          ＋ 建立本店團
+        </Link>
+      </div>
 
       <div className="mt-8 overflow-x-auto rounded-2xl border border-slate-100">
         <table className="min-w-250 w-full text-left">

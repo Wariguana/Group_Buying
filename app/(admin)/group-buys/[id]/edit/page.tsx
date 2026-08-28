@@ -18,16 +18,22 @@ export default async function EditGroupBuyPage({
     redirect("/");
   }
 
-  if (user.role !== "HQ_ADMIN") {
+  const isHqAdmin = user.role === "HQ_ADMIN";
+
+  if (!isHqAdmin && !user.storeId) {
     redirect("/group-buys");
   }
 
   const { id } = await params;
 
-  const groupBuy = await prisma.groupBuy.findUnique({
-    where: {
-      id,
-    },
+  const groupBuy = await prisma.groupBuy.findFirst({
+    where: isHqAdmin
+      ? { id }
+      : {
+          id,
+          source: "STORE",
+          ownerStoreId: user.storeId!,
+        },
     select: {
       id: true,
       title: true,
@@ -47,6 +53,11 @@ export default async function EditGroupBuyPage({
       defaultPickupEnd: true,
       status: true,
       groupBuyStores: {
+        where: isHqAdmin
+          ? undefined
+          : {
+              storeId: user.storeId!,
+            },
         select: {
           storeId: true,
           pickupStart: true,
@@ -60,17 +71,19 @@ export default async function EditGroupBuyPage({
     notFound();
   }
 
-  const stores = await prisma.store.findMany({
-    orderBy: {
-      name: "asc",
-    },
-    select: {
-      id: true,
-      name: true,
-      address: true,
-      enabled: true,
-    },
-  });
+  const stores = isHqAdmin
+    ? await prisma.store.findMany({
+        orderBy: {
+          name: "asc",
+        },
+        select: {
+          id: true,
+          name: true,
+          address: true,
+          enabled: true,
+        },
+      })
+    : [];
 
   return (
     <section className="mx-auto max-w-4xl">
@@ -81,13 +94,16 @@ export default async function EditGroupBuyPage({
         ← 回到團購詳情
       </Link>
 
-      <h1 className="mt-4 text-3xl font-bold">編輯團購</h1>
+      <h1 className="mt-4 text-3xl font-bold">
+        {isHqAdmin ? "編輯團購" : "編輯本店團"}
+      </h1>
       <p className="mt-2 text-slate-600">
         修改後會立即更新團購內容；已成立訂單仍保留原本的商品與價格快照。
       </p>
 
       <GroupBuyEditForm
         stores={stores}
+        mode={isHqAdmin ? "HQ" : "STORE"}
         groupBuy={{
           id: groupBuy.id,
           title: groupBuy.title,

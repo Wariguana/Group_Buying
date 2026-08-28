@@ -11,13 +11,18 @@ type StoreOption = {
 
 type GroupBuyFormProps = {
   stores: StoreOption[];
+  mode: "HQ" | "STORE";
 };
 
 function optionalValue(value: string) {
   return value.trim() ? value.trim() : undefined;
 }
 
-export function GroupBuyForm({ stores }: GroupBuyFormProps) {
+export function GroupBuyForm({
+  stores,
+  mode,
+}: GroupBuyFormProps) {
+  const isHqGroup = mode === "HQ";
   const router = useRouter();
 
   const [title, setTitle] = useState("");
@@ -50,7 +55,7 @@ export function GroupBuyForm({ stores }: GroupBuyFormProps) {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (selectedStoreIds.length === 0) {
+    if (isHqGroup && selectedStoreIds.length === 0) {
       setErrorMessage("請至少選擇一間參與門市。");
       return;
     }
@@ -80,7 +85,7 @@ export function GroupBuyForm({ stores }: GroupBuyFormProps) {
           endAt: new Date(endAt).toISOString(),
           defaultPickupStart: new Date(defaultPickupStart).toISOString(),
           defaultPickupEnd: new Date(defaultPickupEnd).toISOString(),
-          storeIds: selectedStoreIds,
+          ...(isHqGroup ? { storeIds: selectedStoreIds } : {}),
         }),
       });
 
@@ -269,7 +274,7 @@ export function GroupBuyForm({ stores }: GroupBuyFormProps) {
           </label>
 
           <label className="grid gap-2">
-            <span className="font-medium">預設取貨開始時間</span>
+            <span className="font-medium">{isHqGroup ? "預設取貨開始時間" : "本店取貨開始時間"}</span>
             <input
               type="datetime-local"
               value={defaultPickupStart}
@@ -280,7 +285,7 @@ export function GroupBuyForm({ stores }: GroupBuyFormProps) {
           </label>
 
           <label className="grid gap-2">
-            <span className="font-medium">預設取貨結束時間</span>
+            <span className="font-medium">{isHqGroup ? "預設取貨結束時間" : "本店取貨結束時間"}</span>
             <input
               type="datetime-local"
               value={defaultPickupEnd}
@@ -291,7 +296,7 @@ export function GroupBuyForm({ stores }: GroupBuyFormProps) {
           </label>
         </div>
       </section>
-
+    {isHqGroup ? (
       <section>
         <h2 className="text-xl font-bold">參與門市</h2>
         <p className="mt-2 text-sm text-slate-500">
@@ -320,6 +325,7 @@ export function GroupBuyForm({ stores }: GroupBuyFormProps) {
           ))}
         </div>
       </section>
+      ) : null}
 
       {errorMessage ? (
         <p className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -329,7 +335,7 @@ export function GroupBuyForm({ stores }: GroupBuyFormProps) {
 
       <button
         type="submit"
-        disabled={isSubmitting || stores.length === 0}
+        disabled={isSubmitting || (isHqGroup && stores.length === 0)}
         className="w-full rounded-lg bg-[#007F83] py-3 font-medium text-white transition hover:bg-[#55AFB9] disabled:cursor-not-allowed disabled:opacity-60"
       >
         {isSubmitting ? "建立中…" : "建立草稿"}

@@ -43,6 +43,7 @@ type EditableGroupBuy = {
 type GroupBuyEditFormProps = {
   stores: StoreOption[];
   groupBuy: EditableGroupBuy;
+  mode: "HQ" | "STORE";
 };
 
 function toLocalDateTimeInput(isoValue: string) {
@@ -61,8 +62,10 @@ function optionalValue(value: string) {
 export function GroupBuyEditForm({
   stores,
   groupBuy,
+  mode,
 }: GroupBuyEditFormProps) {
   const router = useRouter();
+  const isHqAdmin = mode === "HQ";
 
   const [title, setTitle] = useState(groupBuy.title);
   const [content, setContent] = useState(groupBuy.content);
@@ -202,9 +205,13 @@ export function GroupBuyEditForm({
           stores: selectedStoreIds.map((storeId) => ({
             storeId,
             pickupStart: new Date(
-              pickupTimes[storeId].pickupStart
+              isHqAdmin
+                ? pickupTimes[storeId].pickupStart
+                : defaultPickupStart
             ).toISOString(),
-            pickupEnd: new Date(pickupTimes[storeId].pickupEnd).toISOString(),
+            pickupEnd: new Date(
+              isHqAdmin ? pickupTimes[storeId].pickupEnd : defaultPickupEnd
+            ).toISOString(),
           })),
         }),
       });
@@ -392,7 +399,9 @@ export function GroupBuyEditForm({
           </label>
 
           <label className="grid gap-2">
-            <span className="font-medium">預設取貨開始時間</span>
+            <span className="font-medium">
+              {isHqAdmin ? "預設取貨開始時間" : "本店取貨開始時間"}
+            </span>
             <input
               type="datetime-local"
               value={defaultPickupStart}
@@ -403,7 +412,9 @@ export function GroupBuyEditForm({
           </label>
 
           <label className="grid gap-2">
-            <span className="font-medium">預設取貨結束時間</span>
+            <span className="font-medium">
+              {isHqAdmin ? "預設取貨結束時間" : "本店取貨結束時間"}
+            </span>
             <input
               type="datetime-local"
               value={defaultPickupEnd}
@@ -415,94 +426,96 @@ export function GroupBuyEditForm({
         </div>
       </section>
 
-      <section>
-        <h2 className="text-xl font-bold">參與門市與個別取貨時間</h2>
-        <p className="mt-2 text-sm text-slate-500">
-          新加入的門市會先使用預設取貨時間；每間門市可在下方各自調整。
-        </p>
+      {isHqAdmin ? (
+        <section>
+          <h2 className="text-xl font-bold">參與門市與個別取貨時間</h2>
+          <p className="mt-2 text-sm text-slate-500">
+            新加入的門市會先使用預設取貨時間；每間門市可在下方各自調整。
+          </p>
 
-        <div className="mt-4 space-y-3">
-          {stores.map((store) => {
-            const isSelected = selectedStoreIds.includes(store.id);
-            const pickupTime = pickupTimes[store.id];
+          <div className="mt-4 space-y-3">
+            {stores.map((store) => {
+              const isSelected = selectedStoreIds.includes(store.id);
+              const pickupTime = pickupTimes[store.id];
 
-            return (
-              <div
-                key={store.id}
-                className={`rounded-xl border p-4 ${
-                  isSelected
-                    ? "border-[#007F83] bg-[#007F83]/5"
-                    : "border-slate-200"
-                }`}
-              >
-                <label className="flex cursor-pointer items-start gap-3">
-                  <input
-                    type="checkbox"
-                    checked={isSelected}
-                    disabled={!store.enabled && !isSelected}
-                    onChange={() => toggleStore(store.id)}
-                    className="mt-1 h-4 w-4 accent-[#007F83]"
-                  />
+              return (
+                <div
+                  key={store.id}
+                  className={`rounded-xl border p-4 ${
+                    isSelected
+                      ? "border-[#007F83] bg-[#007F83]/5"
+                      : "border-slate-200"
+                  }`}
+                >
+                  <label className="flex cursor-pointer items-start gap-3">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      disabled={!store.enabled && !isSelected}
+                      onChange={() => toggleStore(store.id)}
+                      className="mt-1 h-4 w-4 accent-[#007F83]"
+                    />
 
-                  <span>
-                    <span className="font-bold">{store.name}</span>
-                    {!store.enabled ? (
-                      <span className="ml-2 text-sm text-rose-600">
-                        已停用
+                    <span>
+                      <span className="font-bold">{store.name}</span>
+                      {!store.enabled ? (
+                        <span className="ml-2 text-sm text-rose-600">
+                          已停用
+                        </span>
+                      ) : null}
+                      <span className="mt-1 block text-sm text-slate-500">
+                        {store.address}
                       </span>
-                    ) : null}
-                    <span className="mt-1 block text-sm text-slate-500">
-                      {store.address}
                     </span>
-                  </span>
-                </label>
+                  </label>
 
-                {isSelected && pickupTime ? (
-                  <div className="mt-4 grid gap-4 border-t border-slate-200 pt-4 md:grid-cols-2">
-                    <label className="grid gap-2">
-                      <span className="text-sm font-medium">
-                        {store.name}取貨開始時間
-                      </span>
-                      <input
-                        type="datetime-local"
-                        value={pickupTime.pickupStart}
-                        onChange={(event) =>
-                          updatePickupTime(
-                            store.id,
-                            "pickupStart",
-                            event.target.value
-                          )
-                        }
-                        required
-                        className="rounded-lg border border-slate-300 px-3 py-2"
-                      />
-                    </label>
+                  {isSelected && pickupTime ? (
+                    <div className="mt-4 grid gap-4 border-t border-slate-200 pt-4 md:grid-cols-2">
+                      <label className="grid gap-2">
+                        <span className="text-sm font-medium">
+                          {store.name}取貨開始時間
+                        </span>
+                        <input
+                          type="datetime-local"
+                          value={pickupTime.pickupStart}
+                          onChange={(event) =>
+                            updatePickupTime(
+                              store.id,
+                              "pickupStart",
+                              event.target.value
+                            )
+                          }
+                          required
+                          className="rounded-lg border border-slate-300 px-3 py-2"
+                        />
+                      </label>
 
-                    <label className="grid gap-2">
-                      <span className="text-sm font-medium">
-                        {store.name}取貨結束時間
-                      </span>
-                      <input
-                        type="datetime-local"
-                        value={pickupTime.pickupEnd}
-                        onChange={(event) =>
-                          updatePickupTime(
-                            store.id,
-                            "pickupEnd",
-                            event.target.value
-                          )
-                        }
-                        required
-                        className="rounded-lg border border-slate-300 px-3 py-2"
-                      />
-                    </label>
-                  </div>
-                ) : null}
-              </div>
-            );
-          })}
-        </div>
-      </section>
+                      <label className="grid gap-2">
+                        <span className="text-sm font-medium">
+                          {store.name}取貨結束時間
+                        </span>
+                        <input
+                          type="datetime-local"
+                          value={pickupTime.pickupEnd}
+                          onChange={(event) =>
+                            updatePickupTime(
+                              store.id,
+                              "pickupEnd",
+                              event.target.value
+                            )
+                          }
+                          required
+                          className="rounded-lg border border-slate-300 px-3 py-2"
+                        />
+                      </label>
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
 
       {errorMessage ? (
         <p className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
