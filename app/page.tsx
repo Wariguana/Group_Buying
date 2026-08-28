@@ -53,7 +53,7 @@ export default function Index() {
       <section className="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg">
         <div className="text-center">
           <Image
-            className="mx-auto w-[150px] h-auto"
+            className="mx-auto w-37.5 h-auto"
             src="/Millionlogo.png"
             alt="台糖蜜鄰 Logo"
             width={100}
