@@ -118,9 +118,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "請先登入。" }, { status: 401 });
   }
 
-  if (user.role !== "HQ_ADMIN") {
+  const isHqAdmin = user.role === "HQ_ADMIN";
+  const isStoreAdmin = user.role === "STORE_ADMIN";
+
+  if (!isHqAdmin && (!isStoreAdmin || !user.storeId)) {
     return NextResponse.json(
-      { message: "只有總公司管理員可以建立總公司團。" },
+      { message: "分店管理員尚未綁定門市。" },
       { status: 403 }
     );
   }
@@ -213,30 +216,55 @@ export async function POST(request: Request) {
     );
   }
 
-  if (storeIds.length === 0) {
-    return NextResponse.json(
-      { message: "請至少選擇一間參與門市。" },
-      { status: 400 }
-    );
-  }
+  let participantStoreIds: string[];
 
-  const enabledStores = await prisma.store.findMany({
-    where: {
-      id: {
-        in: storeIds,
+  if (isHqAdmin) {
+    if (storeIds.length === 0) {
+      return NextResponse.json(
+        { message: "請至少選擇一間參與門市。" },
+        { status: 400 }
+      );
+    }
+
+    const enabledStores = await prisma.store.findMany({
+      where: {
+        id: {
+          in: storeIds,
+        },
+        enabled: true,
       },
-      enabled: true,
-    },
-    select: {
-      id: true,
-    },
-  });
+      select: {
+        id: true,
+      },
+    });
 
-  if (enabledStores.length !== storeIds.length) {
-    return NextResponse.json(
-      { message: "選擇的門市不存在或目前已停用。" },
-      { status: 400 }
-    );
+    if (enabledStores.length !== storeIds.length) {
+      return NextResponse.json(
+        { message: "選擇的門市不存在或目前已停用。" },
+        { status: 400 }
+      );
+    }
+
+    participantStoreIds = storeIds;
+  } else {
+    const ownStore = await prisma.store.findFirst({
+      where: {
+        id: user.storeId!,
+        enabled: true,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!ownStore) {
+      return NextResponse.json(
+        { message: "目前綁定的門市不存在或已停用。" },
+        { status: 403 }
+      );
+    }
+
+    participantStoreIds = [ownStore.id];
   }
 
   const groupBuy = await prisma.groupBuy.create({
@@ -256,9 +284,11 @@ export async function POST(request: Request) {
       endAt,
       defaultPickupStart,
       defaultPickupEnd,
+      source: isHqAdmin ? "HQ" : "STORE",
+      ownerStoreId: isHqAdmin ? null : user.storeId,
       createdById: user.id,
       groupBuyStores: {
-        create: storeIds.map((storeId) => ({
+        create: participantStoreIds.map((storeId) => ({
           storeId,
           pickupStart: defaultPickupStart,
           pickupEnd: defaultPickupEnd,

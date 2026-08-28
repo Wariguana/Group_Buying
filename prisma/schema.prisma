@@ -27,6 +27,11 @@ enum OrderStatus {
   EXPIRED_UNCOLLECTED
 }
 
+enum GroupBuySource {
+  HQ
+  STORE
+}
+
 model User {
   id           String   @id @default(cuid())
   username     String   @unique
@@ -52,18 +57,19 @@ model Store {
   lineGroupId String? @unique
   enabled     Boolean @default(true)
 
-  admin             User?
-  groupBuyStores    GroupBuyStore[]
+  admin          User?
+  groupBuyStores GroupBuyStore[]
+  ownedGroupBuys GroupBuy[]      @relation("StoreOwnedGroupBuys")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model Customer {
-  id            String  @id @default(cuid())
-  lineUserId    String  @unique
-  displayName   String?
-  phone         String?
+  id          String  @id @default(cuid())
+  lineUserId  String  @unique
+  displayName String?
+  phone       String?
 
   orders Order[]
 
@@ -72,7 +78,7 @@ model Customer {
 }
 
 model GroupBuy {
-  id        String          @id @default(cuid())
+  id        String   @id @default(cuid())
   title     String
   content   String?
   imageUrls String[]
@@ -96,6 +102,10 @@ model GroupBuy {
 
   status GroupBuyStatus @default(DRAFT)
 
+  source       GroupBuySource @default(HQ)
+  ownerStoreId String?
+  ownerStore   Store?         @relation("StoreOwnedGroupBuys", fields: [ownerStoreId], references: [id])
+
   createdById String
   createdBy   User   @relation("GroupBuyCreator", fields: [createdById], references: [id])
 
@@ -103,6 +113,8 @@ model GroupBuy {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([source, ownerStoreId])
 }
 
 model GroupBuyStore {
@@ -140,10 +152,10 @@ model Order {
 
   status OrderStatus @default(ORDERED)
 
-  arrivedAt   DateTime?
-  paidAt      DateTime?
-  canceledAt  DateTime?
-  expiredAt   DateTime?
+  arrivedAt  DateTime?
+  paidAt     DateTime?
+  canceledAt DateTime?
+  expiredAt  DateTime?
 
   customer      Customer      @relation(fields: [customerId], references: [id])
   groupBuyStore GroupBuyStore @relation(fields: [groupBuyStoreId], references: [id])

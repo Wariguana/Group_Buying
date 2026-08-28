@@ -57,19 +57,26 @@ export async function PATCH(request: Request, context: RouteContext) {
     return NextResponse.json({ message: "請先登入。" }, { status: 401 });
   }
 
-  if (user.role !== "HQ_ADMIN") {
+  const isHqAdmin = user.role === "HQ_ADMIN";
+  const isStoreAdmin = user.role === "STORE_ADMIN";
+
+  if (!isHqAdmin && (!isStoreAdmin || !user.storeId)) {
     return NextResponse.json(
-      { message: "只有總公司管理員可以修改總公司團。" },
+      { message: "分店管理員尚未綁定門市。" },
       { status: 403 }
     );
   }
 
   const { id } = await context.params;
 
-  const existingGroupBuy = await prisma.groupBuy.findUnique({
-    where: {
-      id,
-    },
+  const existingGroupBuy = await prisma.groupBuy.findFirst({
+    where: isHqAdmin
+      ? { id }
+      : {
+          id,
+          source: "STORE",
+          ownerStoreId: user.storeId!,
+        },
     select: {
       id: true,
       groupBuyStores: {
@@ -228,6 +235,16 @@ export async function PATCH(request: Request, context: RouteContext) {
     );
   }
 
+  if (
+    !isHqAdmin &&
+    (stores.length !== 1 || uniqueStoreIds[0] !== user.storeId)
+  ) {
+    return NextResponse.json(
+      { message: "分店只能修改自己門市的團購資料。" },
+      { status: 403 }
+    );
+  }
+
   const existingStoreIds = new Set(
     existingGroupBuy.groupBuyStores.map((groupBuyStore) => groupBuyStore.storeId)
   );
@@ -262,9 +279,11 @@ export async function PATCH(request: Request, context: RouteContext) {
     );
   }
 
-  const removedGroupBuyStores = existingGroupBuy.groupBuyStores.filter(
-    (groupBuyStore) => !uniqueStoreIds.includes(groupBuyStore.storeId)
-  );
+  const removedGroupBuyStores = isHqAdmin
+    ? existingGroupBuy.groupBuyStores.filter(
+        (groupBuyStore) => !uniqueStoreIds.includes(groupBuyStore.storeId)
+      )
+    : [];
 
   const removedStoreHasOrders = removedGroupBuyStores.some(
     (groupBuyStore) => groupBuyStore._count.orders > 0

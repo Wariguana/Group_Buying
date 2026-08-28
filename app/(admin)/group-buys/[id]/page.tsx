@@ -75,6 +75,8 @@ export default async function GroupBuyDetailPage({
       defaultPickupStart: true,
       defaultPickupEnd: true,
       status: true,
+      source: true,
+      ownerStoreId: true,
       groupBuyStores: {
         where: isHqAdmin
             ? undefined
@@ -114,6 +116,10 @@ export default async function GroupBuyDetailPage({
     if (!isHqAdmin && visibleGroupBuyStores.length === 0) {
     notFound();
     }
+    const isOwnStoreGroup =
+      !isHqAdmin &&
+      groupBuy.source === "STORE" &&
+      groupBuy.ownerStoreId === user.storeId;
 
   return (
     <section className="mx-auto max-w-4xl">
@@ -148,13 +154,20 @@ export default async function GroupBuyDetailPage({
                   status={groupBuy.status}
                 />
               </>
+            ) : isOwnStoreGroup ? (
+            <Link
+                href={`/group-buys/${groupBuy.id}/edit`}
+                className="rounded-lg bg-[#007F83] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#55AFB9]"
+            >
+                編輯本店團
+            </Link>
             ) : (
-              <Link
+            <Link
                 href={`/group-buys/${groupBuy.id}/pickup-time`}
                 className="rounded-lg bg-[#007F83] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#55AFB9]"
-              >
+            >
                 調整本店取貨時間
-              </Link>
+            </Link>
             )}
 
             <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700">
