@@ -39,16 +39,24 @@ export default async function GroupBuyDetailPage({
     redirect("/");
   }
 
-  if (user.role !== "HQ_ADMIN") {
+    const { id } = await params;
+    const isHqAdmin = user.role === "HQ_ADMIN";
+
+    if (!isHqAdmin && !user.storeId) {
     redirect("/group-buys");
-  }
+    }
 
-  const { id } = await params;
-
-  const groupBuy = await prisma.groupBuy.findUnique({
-    where: {
-      id,
-    },
+    const groupBuy = await prisma.groupBuy.findFirst({
+    where: isHqAdmin
+        ? { id }
+        : {
+            id,
+            groupBuyStores: {
+            some: {
+                storeId: user.storeId!,
+            },
+            },
+        },
     select: {
       id: true,
       title: true,
@@ -68,6 +76,11 @@ export default async function GroupBuyDetailPage({
       defaultPickupEnd: true,
       status: true,
       groupBuyStores: {
+        where: isHqAdmin
+            ? undefined
+            :{
+                storeId: user.storeId!,
+            },
         select: {
           id: true,
           pickupStart: true,
@@ -92,6 +105,15 @@ export default async function GroupBuyDetailPage({
   if (!groupBuy) {
     notFound();
   }
+  const visibleGroupBuyStores = isHqAdmin
+    ? groupBuy.groupBuyStores
+    : groupBuy.groupBuyStores.filter(
+        (groupBuyStore) => groupBuyStore.store.id === user.storeId
+        );
+
+    if (!isHqAdmin && visibleGroupBuyStores.length === 0) {
+    notFound();
+    }
 
   return (
     <section className="mx-auto max-w-4xl">
@@ -106,26 +128,37 @@ export default async function GroupBuyDetailPage({
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-sm font-medium text-[#007F83]">
-              總公司團購詳情
+              {isHqAdmin ? "總公司團購詳情" : "門市團購詳情"}
             </p>
             <h1 className="mt-2 text-3xl font-bold">{groupBuy.title}</h1>
           </div>
 
           <div className="flex flex-wrap items-center justify-end gap-3">
-            <Link
-                href={`/group-buys/${groupBuy.id}/edit`}
-                className="rounded-lg bg-[#007F83] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#55AFB9]"
-            >
-                編輯團購
-            </Link>
+            {isHqAdmin ? (
+              <>
+                <Link
+                  href={`/group-buys/${groupBuy.id}/edit`}
+                  className="rounded-lg bg-[#007F83] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#55AFB9]"
+                >
+                  編輯團購
+                </Link>
 
-            <GroupBuyStatusActions
-                groupBuyId={groupBuy.id}
-                status={groupBuy.status}
-            />
+                <GroupBuyStatusActions
+                  groupBuyId={groupBuy.id}
+                  status={groupBuy.status}
+                />
+              </>
+            ) : (
+              <Link
+                href={`/group-buys/${groupBuy.id}/pickup-time`}
+                className="rounded-lg bg-[#007F83] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#55AFB9]"
+              >
+                調整本店取貨時間
+              </Link>
+            )}
 
             <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700">
-                {getStatusLabel(groupBuy.status)}
+              {getStatusLabel(groupBuy.status)}
             </span>
           </div>
         </div>
@@ -221,7 +254,7 @@ export default async function GroupBuyDetailPage({
           <h2 className="text-xl font-bold">參與門市與取貨時間</h2>
 
           <div className="mt-4 space-y-3">
-            {groupBuy.groupBuyStores.map((groupBuyStore) => (
+            {visibleGroupBuyStores.map((groupBuyStore) => (
               <div
                 key={groupBuyStore.id}
                 className="rounded-xl border border-slate-200 p-4"
