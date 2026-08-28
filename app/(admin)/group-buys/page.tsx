@@ -233,13 +233,21 @@ export default async function GroupBuysPage() {
                     {getStatusLabel(groupBuyStore.groupBuy.status)}
                   </span>
                 </td>
+                <td className="px-5 py-4">
+                    <Link
+                        href={`/group-buys/${groupBuyStore.groupBuy.id}`}
+                        className="font-medium text-[#007F83] hover:underline"
+                    >
+                        查看詳情
+                    </Link>
+                </td>
               </tr>
             ))}
 
             {assignedGroupBuys.length === 0 ? (
               <tr>
                 <td
-                  colSpan={6}
+                  colSpan={7}
                   className="px-5 py-10 text-center text-slate-500"
                 >
                   目前沒有指派給本店的團購。
