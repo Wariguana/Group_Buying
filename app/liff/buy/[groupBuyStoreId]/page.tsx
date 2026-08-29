@@ -46,7 +46,10 @@ function formatDateTime(value: string) {
 }
 
 function getFirstAllowedQuantity(groupBuy: GroupBuyStore["groupBuy"]) {
-  return Math.ceil(groupBuy.minimumQuantity / groupBuy.quantityMultiple) * groupBuy.quantityMultiple;
+  return (
+    Math.ceil(groupBuy.minimumQuantity / groupBuy.quantityMultiple) *
+    groupBuy.quantityMultiple
+  );
 }
 
 function formatCurrency(value: number) {
@@ -59,14 +62,29 @@ function formatCurrency(value: number) {
 
 export default function LiffBuyPage() {
   const params = useParams<{ groupBuyStoreId: string }>();
-  const { customer, errorMessage: lineErrorMessage, status } = useLineCustomer();
-  const [groupBuyStore, setGroupBuyStore] = useState<GroupBuyStore | null>(null);
+  const {
+    customer,
+    errorMessage: lineErrorMessage,
+    status,
+  } = useLineCustomer();
+  const [groupBuyStore, setGroupBuyStore] = useState<GroupBuyStore | null>(
+    null,
+  );
   const [groupBuyErrorMessage, setGroupBuyErrorMessage] = useState("");
   const [quantity, setQuantity] = useState("");
   const [note, setNote] = useState("");
   const [orderErrorMessage, setOrderErrorMessage] = useState("");
   const [createdOrder, setCreatedOrder] = useState<CreatedOrder | null>(null);
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
+
+  useEffect(() => {
+    if (!customer?.needsPhone || !params.groupBuyStoreId) {
+      return;
+    }
+
+    const returnTo = `/buy/${params.groupBuyStoreId}`;
+    window.location.replace(`/liff?returnTo=${encodeURIComponent(returnTo)}`);
+  }, [customer?.needsPhone, params.groupBuyStoreId]);
 
   useEffect(() => {
     if (!customer || !params.groupBuyStoreId) {
@@ -95,7 +113,9 @@ export default function LiffBuyPage() {
         }
 
         setGroupBuyStore(data.groupBuyStore);
-        setQuantity(String(getFirstAllowedQuantity(data.groupBuyStore.groupBuy)));
+        setQuantity(
+          String(getFirstAllowedQuantity(data.groupBuyStore.groupBuy)),
+        );
       } catch {
         if (!cancelled) {
           setGroupBuyErrorMessage("無法連線到伺服器，請稍後再試。");
@@ -161,11 +181,16 @@ export default function LiffBuyPage() {
     <main className="min-h-screen bg-slate-50 p-5 text-slate-900">
       <section className="mx-auto max-w-lg space-y-5">
         <header className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-          <p className="text-sm font-semibold text-[#007F83]">{groupBuyStore?.store.name ?? "團購管理系統"}</p>
-          <h1 className="mt-2 text-3xl font-bold">{groupBuyStore?.groupBuy.title ?? "團購載入中"}</h1>
+          <p className="text-sm font-semibold text-[#007F83]">
+            {groupBuyStore?.store.name ?? "團購管理系統"}
+          </p>
+          <h1 className="mt-2 text-3xl font-bold">
+            {groupBuyStore?.groupBuy.title ?? "團購載入中"}
+          </h1>
           {customer ? (
             <p className="mt-2 text-sm text-slate-600">
-              {customer.displayName ? `${customer.displayName}，` : ""}已完成 LINE 身分驗證
+              {customer.displayName ? `${customer.displayName}，` : ""}已完成
+              LINE 身分驗證
             </p>
           ) : (
             <p className="mt-2 text-sm text-slate-600">{status}</p>
@@ -173,7 +198,10 @@ export default function LiffBuyPage() {
         </header>
 
         {errorMessage ? (
-          <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
+          <p
+            className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700"
+            role="alert"
+          >
             {errorMessage}
           </p>
         ) : null}
@@ -205,13 +233,19 @@ export default function LiffBuyPage() {
               <div className="space-y-4 p-6">
                 <div>
                   <p className="text-sm text-slate-500">商品</p>
-                  <h2 className="mt-1 text-2xl font-bold">{groupBuyStore.groupBuy.productName}</h2>
+                  <h2 className="mt-1 text-2xl font-bold">
+                    {groupBuyStore.groupBuy.productName}
+                  </h2>
                   {groupBuyStore.groupBuy.unit ? (
-                    <p className="mt-1 text-sm text-slate-500">單位：{groupBuyStore.groupBuy.unit}</p>
+                    <p className="mt-1 text-sm text-slate-500">
+                      單位：{groupBuyStore.groupBuy.unit}
+                    </p>
                   ) : null}
                 </div>
                 {groupBuyStore.groupBuy.content ? (
-                  <p className="whitespace-pre-wrap leading-7 text-slate-700">{groupBuyStore.groupBuy.content}</p>
+                  <p className="whitespace-pre-wrap leading-7 text-slate-700">
+                    {groupBuyStore.groupBuy.content}
+                  </p>
                 ) : null}
                 <div className="flex items-baseline gap-3">
                   <span className="text-3xl font-bold text-[#007F83]">
@@ -235,7 +269,9 @@ export default function LiffBuyPage() {
               </div>
               <div className="rounded-lg bg-slate-50 p-4 text-sm text-slate-700">
                 <p className="font-medium">取貨時間</p>
-                <p className="mt-1">{formatDateTime(groupBuyStore.pickupStart)}</p>
+                <p className="mt-1">
+                  {formatDateTime(groupBuyStore.pickupStart)}
+                </p>
                 <p>至 {formatDateTime(groupBuyStore.pickupEnd)}</p>
               </div>
             </section>
@@ -245,9 +281,12 @@ export default function LiffBuyPage() {
                 <h2 className="text-xl font-bold">訂單已成立</h2>
                 <p className="mt-3 text-sm">訂單編號：{createdOrder.orderNo}</p>
                 <p className="mt-1 text-sm">
-                  {createdOrder.productName} × {createdOrder.quantity}，共 {formatCurrency(Number(createdOrder.totalAmount))}
+                  {createdOrder.productName} × {createdOrder.quantity}，共{" "}
+                  {formatCurrency(Number(createdOrder.totalAmount))}
                 </p>
-                <p className="mt-4 text-sm">請於取貨時間到 {groupBuyStore.store.name} 取貨並現場付款。</p>
+                <p className="mt-4 text-sm">
+                  請於取貨時間到 {groupBuyStore.store.name} 取貨並現場付款。
+                </p>
                 <a
                   href="/liff/orders"
                   className="mt-5 inline-flex rounded-lg bg-[#007F83] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#00686b]"
@@ -256,11 +295,15 @@ export default function LiffBuyPage() {
                 </a>
               </section>
             ) : (
-              <form className="space-y-5 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200" onSubmit={handleSubmitOrder}>
+              <form
+                className="space-y-5 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200"
+                onSubmit={handleSubmitOrder}
+              >
                 <div>
                   <h2 className="text-lg font-bold">訂購數量</h2>
                   <p className="mt-1 text-sm text-slate-500">
-                    最低 {groupBuyStore.groupBuy.minimumQuantity}；每次需為 {groupBuyStore.groupBuy.quantityMultiple} 的倍數。
+                    最低 {groupBuyStore.groupBuy.minimumQuantity}；每次需為{" "}
+                    {groupBuyStore.groupBuy.quantityMultiple} 的倍數。
                     {groupBuyStore.groupBuy.perCustomerLimit
                       ? ` 每人限購 ${groupBuyStore.groupBuy.perCustomerLimit}。`
                       : ""}
@@ -290,14 +333,20 @@ export default function LiffBuyPage() {
                   />
                 </label>
                 {orderErrorMessage ? (
-                  <p className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
+                  <p
+                    className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700"
+                    role="alert"
+                  >
                     {orderErrorMessage}
                   </p>
                 ) : null}
                 <div className="rounded-lg bg-slate-50 p-4 text-sm text-slate-700">
                   預估金額：
                   <span className="ml-2 text-lg font-bold text-[#007F83]">
-                    {formatCurrency(Number(groupBuyStore.groupBuy.groupPrice) * (Number(quantity) || 0))}
+                    {formatCurrency(
+                      Number(groupBuyStore.groupBuy.groupPrice) *
+                        (Number(quantity) || 0),
+                    )}
                   </span>
                 </div>
                 <button

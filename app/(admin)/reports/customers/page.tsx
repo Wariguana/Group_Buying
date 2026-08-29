@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { getCurrentUser } from "@/app/lib/auth";
 import { prisma } from "@/app/lib/prisma";
+import { getGroupBuyStartDateFilter } from "@/app/lib/reporting";
 
 type CustomersReportPageProps = {
   searchParams: Promise<{
@@ -10,19 +11,9 @@ type CustomersReportPageProps = {
     end?: string;
     store?: string;
     customer?: string;
+    page?: string;
   }>;
 };
-
-function getTaiwanDate(value: string | undefined, isEndOfDay = false) {
-  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    return null;
-  }
-
-  const time = isEndOfDay ? "T23:59:59.999" : "T00:00:00";
-  const date = new Date(`${value}${time}+08:00`);
-
-  return Number.isNaN(date.getTime()) ? null : date;
-}
 
 function formatAmount(amount: number) {
   return new Intl.NumberFormat("zh-TW", {
@@ -58,21 +49,13 @@ export default async function CustomersReportPage({
       ? params.store!
       : "";
   const customerQuery = params.customer?.trim().slice(0, 100) ?? "";
-  const startAt = getTaiwanDate(params.start);
-  const endAt = getTaiwanDate(params.end, true);
+  const page = Math.max(1, Number.parseInt(params.page ?? "1", 10) || 1);
+  const pageSize = 200;
+  const groupBuyDateFilter = getGroupBuyStartDateFilter(params.start, params.end);
   const storeScope = !isHqAdmin
     ? { groupBuyStore: { storeId: user.storeId! } }
     : selectedStoreId
       ? { groupBuyStore: { storeId: selectedStoreId } }
-      : {};
-  const paidAtFilter =
-    startAt || endAt
-      ? {
-          paidAt: {
-            ...(startAt ? { gte: startAt } : {}),
-            ...(endAt ? { lte: endAt } : {}),
-          },
-        }
       : {};
   const customerFilter = customerQuery
     ? {
@@ -93,22 +76,33 @@ export default async function CustomersReportPage({
   const paidOrders = await prisma.order.findMany({
     where: {
       status: "PICKED_UP_PAID",
-      ...storeScope,
-      ...paidAtFilter,
+      AND: [storeScope, groupBuyDateFilter],
       ...customerFilter,
     },
+    orderBy: { paidAt: "desc" },
+    skip: (page - 1) * pageSize,
+    take: pageSize + 1,
     select: {
+      id: true,
+      orderNo: true,
       customerId: true,
+      productName: true,
+      unit: true,
+      unitPrice: true,
       quantity: true,
       totalAmount: true,
+      paidAt: true,
       customer: {
         select: {
           displayName: true,
           phone: true,
         },
       },
+      groupBuyStore: { select: { groupBuy: { select: { title: true } } } },
     },
   });
+  const hasNextPage = paidOrders.length > pageSize;
+  const visibleOrders = hasNextPage ? paidOrders.slice(0, pageSize) : paidOrders;
 
   const customers = new Map<
     string,
@@ -122,7 +116,7 @@ export default async function CustomersReportPage({
     }
   >();
 
-  for (const order of paidOrders) {
+  for (const order of visibleOrders) {
     const existing = customers.get(order.customerId);
 
     if (existing) {
@@ -146,6 +140,12 @@ export default async function CustomersReportPage({
     (left, right) =>
       right.revenue - left.revenue || right.quantity - left.quantity,
   );
+  const exportSearchParams = new URLSearchParams();
+  if (params.start) exportSearchParams.set("start", params.start);
+  if (params.end) exportSearchParams.set("end", params.end);
+  if (selectedStoreId) exportSearchParams.set("store", selectedStoreId);
+  if (customerQuery) exportSearchParams.set("customer", customerQuery);
+  const exportHref = `/api/reports/customers/export${exportSearchParams.size ? `?${exportSearchParams}` : ""}`;
 
   return (
     <main className="mx-auto max-w-7xl px-6 py-8">
@@ -155,9 +155,11 @@ export default async function CustomersReportPage({
             <p className="text-sm font-medium text-[#007F83]">
               {isHqAdmin ? "總公司報表" : "分店報表"}
             </p>
-            <h1 className="mt-2 text-3xl font-bold text-slate-900">客戶分析</h1>
+            <h1 className="mt-2 text-3xl font-bold text-slate-900">
+              訂單銷售－依客戶
+            </h1>
             <p className="mt-3 text-slate-600">
-              依客戶彙總已取貨並付款的訂單，依付款取貨時間篩選。
+              依客戶姓名或電話篩選已收款訂單；Excel 另附每筆客戶購買明細。
             </p>
           </div>
           <Link
@@ -229,48 +231,82 @@ export default async function CustomersReportPage({
           >
             清除篩選
           </Link>
+          <a
+            href={exportHref}
+            className="rounded-lg border border-[#007F83] px-4 py-2 text-sm font-medium text-[#007F83] transition hover:bg-[#e6f4f4]"
+          >
+            匯出 Excel
+          </a>
         </form>
 
         <div className="mt-6 overflow-x-auto rounded-xl border border-slate-200">
           <table className="min-w-full text-left text-sm">
             <thead className="bg-slate-100 text-slate-700">
               <tr>
-                <th className="px-4 py-3">排名</th>
+                <th className="px-4 py-3">收款時間</th>
+                <th className="px-4 py-3">訂單編號</th>
                 <th className="px-4 py-3">客戶</th>
                 <th className="px-4 py-3">電話</th>
-                <th className="px-4 py-3 text-right">已付款訂單數</th>
-                <th className="px-4 py-3 text-right">已付款數量</th>
-                <th className="px-4 py-3 text-right">已付款營業額</th>
+                <th className="px-4 py-3">團購／商品</th>
+                <th className="px-4 py-3 text-right">單價</th>
+                <th className="px-4 py-3 text-right">數量</th>
+                <th className="px-4 py-3 text-right">收款金額</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
               {rows.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={6}
+                    colSpan={9}
                     className="px-4 py-10 text-center text-slate-500"
                   >
-                    此篩選條件下沒有已付款訂單。
+                    此篩選條件下沒有已收款訂單。
                   </td>
                 </tr>
               ) : (
-                rows.map((row, index) => (
-                  <tr key={row.id} className="text-slate-700">
-                    <td className="px-4 py-3 font-medium">{index + 1}</td>
-                    <td className="px-4 py-3 font-medium">
-                      {row.displayName ?? "LINE 客戶"}
+                visibleOrders.map((order) => (
+                  <tr key={order.id} className="text-slate-700">
+                    <td className="px-4 py-3">
+                      {order.paidAt
+                        ? new Intl.DateTimeFormat("zh-TW", {
+                            dateStyle: "short",
+                            timeStyle: "short",
+                          }).format(order.paidAt)
+                        : "—"}
                     </td>
-                    <td className="px-4 py-3">{row.phone ?? "未填寫"}</td>
-                    <td className="px-4 py-3 text-right">{row.orderCount}</td>
-                    <td className="px-4 py-3 text-right">{row.quantity}</td>
+                    <td className="px-4 py-3">{order.orderNo}</td>
+                    <td className="px-4 py-3 font-medium">
+                      {order.customer.displayName ?? "LINE 客戶"}
+                    </td>
+                    <td className="px-4 py-3">
+                      {order.customer.phone ?? "未填寫"}
+                    </td>
+                    <td className="px-4 py-3">
+                      <p>{order.groupBuyStore.groupBuy.title}</p>
+                      <p className="text-slate-500">
+                        {order.productName}
+                        {order.unit ? ` (${order.unit})` : ""}
+                      </p>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      {formatAmount(Number(order.unitPrice))}
+                    </td>
+                    <td className="px-4 py-3 text-right">{order.quantity}</td>
                     <td className="px-4 py-3 text-right font-medium text-[#007F83]">
-                      {formatAmount(row.revenue)}
+                      {formatAmount(Number(order.totalAmount))}
                     </td>
                   </tr>
                 ))
               )}
             </tbody>
           </table>
+        </div>
+        <div className="mt-4 flex items-center justify-between gap-3 text-sm text-slate-600">
+          <span>第 {page} 頁，每頁最多 {pageSize} 筆。</span>
+          <div className="flex gap-2">
+            {page > 1 ? <Link href={`/reports/customers?${new URLSearchParams({ ...Object.fromEntries(exportSearchParams), page: String(page - 1) })}`} className="rounded border px-3 py-2">上一頁</Link> : null}
+            {hasNextPage ? <Link href={`/reports/customers?${new URLSearchParams({ ...Object.fromEntries(exportSearchParams), page: String(page + 1) })}`} className="rounded border px-3 py-2">下一頁</Link> : null}
+          </div>
         </div>
       </section>
     </main>

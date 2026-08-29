@@ -3,25 +3,17 @@ import { redirect } from "next/navigation";
 
 import { getCurrentUser } from "@/app/lib/auth";
 import { prisma } from "@/app/lib/prisma";
+import { getGroupBuyStartDateFilter } from "@/app/lib/reporting";
 
 type ProductsReportPageProps = {
   searchParams: Promise<{
     start?: string;
     end?: string;
     store?: string;
+    product?: string;
+    page?: string;
   }>;
 };
-
-function getTaiwanDate(value: string | undefined, isEndOfDay = false) {
-  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    return null;
-  }
-
-  const time = isEndOfDay ? "T23:59:59.999" : "T00:00:00";
-  const date = new Date(`${value}${time}+08:00`);
-
-  return Number.isNaN(date.getTime()) ? null : date;
-}
 
 function formatAmount(amount: number) {
   return new Intl.NumberFormat("zh-TW", {
@@ -31,9 +23,10 @@ function formatAmount(amount: number) {
   }).format(amount);
 }
 
-export default async function ProductsReportPage({
+export async function ProductsReportPage({
   searchParams,
-}: ProductsReportPageProps) {
+  rankingOnly = false,
+}: ProductsReportPageProps & { rankingOnly?: boolean }) {
   const user = await getCurrentUser();
 
   if (!user) {
@@ -56,30 +49,23 @@ export default async function ProductsReportPage({
     isHqAdmin && stores.some((store) => store.id === params.store)
       ? params.store!
       : "";
-  const startAt = getTaiwanDate(params.start);
-  const endAt = getTaiwanDate(params.end, true);
+  const groupBuyDateFilter = getGroupBuyStartDateFilter(params.start, params.end);
+  const selectedProduct = params.product?.trim().slice(0, 200) ?? "";
+  const page = Math.max(1, Number.parseInt(params.page ?? "1", 10) || 1);
+  const pageSize = 200;
 
   const storeScope = !isHqAdmin
     ? { groupBuyStore: { storeId: user.storeId! } }
     : selectedStoreId
       ? { groupBuyStore: { storeId: selectedStoreId } }
       : {};
-  const paidAtFilter =
-    startAt || endAt
-      ? {
-          paidAt: {
-            ...(startAt ? { gte: startAt } : {}),
-            ...(endAt ? { lte: endAt } : {}),
-          },
-        }
-      : {};
 
   const productGroups = await prisma.order.groupBy({
     by: ["productName", "unit"],
     where: {
-      ...storeScope,
-      ...paidAtFilter,
+      AND: [storeScope, groupBuyDateFilter],
       status: "PICKED_UP_PAID",
+      ...(selectedProduct ? { productName: selectedProduct } : {}),
     },
     _count: {
       _all: true,
@@ -96,6 +82,12 @@ export default async function ProductsReportPage({
     quantity: product._sum.quantity ?? 0,
     revenue: Number(product._sum.totalAmount ?? 0),
   }));
+  const productOptions = await prisma.order.findMany({
+    where: { status: "PICKED_UP_PAID", AND: [storeScope, groupBuyDateFilter] },
+    distinct: ["productName"],
+    orderBy: { productName: "asc" },
+    select: { productName: true },
+  });
   const byRevenue = [...products].sort(
     (left, right) =>
       right.revenue - left.revenue || right.quantity - left.quantity,
@@ -112,6 +104,18 @@ export default async function ProductsReportPage({
     (total, product) => total + product.quantity,
     0,
   );
+  const sortedProducts = rankingOnly ? byQuantity : byRevenue;
+  const visibleProducts = sortedProducts.slice((page - 1) * pageSize, page * pageSize);
+  const hasNextPage = sortedProducts.length > page * pageSize;
+  const exportSearchParams = new URLSearchParams();
+
+  if (params.start) exportSearchParams.set("start", params.start);
+  if (params.end) exportSearchParams.set("end", params.end);
+  if (selectedStoreId) exportSearchParams.set("store", selectedStoreId);
+  if (selectedProduct) exportSearchParams.set("product", selectedProduct);
+  if (rankingOnly) exportSearchParams.set("mode", "quantity");
+
+  const exportHref = `/api/reports/products/export${exportSearchParams.size ? `?${exportSearchParams}` : ""}`;
 
   return (
     <main className="mx-auto max-w-7xl px-6 py-8">
@@ -122,10 +126,10 @@ export default async function ProductsReportPage({
               {isHqAdmin ? "總公司報表" : "分店報表"}
             </p>
             <h1 className="mt-2 text-3xl font-bold text-slate-900">
-              商品分析報表
+              {rankingOnly ? "商品銷售排行報表" : "商品業績報表"}
             </h1>
             <p className="mt-3 text-slate-600">
-              僅統計已取貨並付款的訂單；營業額與銷售排行都依付款取貨時間篩選。
+              僅統計已收款訂單；所有資料依開團日期篩選。
             </p>
           </div>
 
@@ -138,7 +142,7 @@ export default async function ProductsReportPage({
         </div>
 
         <form
-          key={`${params.start ?? ""}-${params.end ?? ""}-${selectedStoreId}`}
+          key={`${params.start ?? ""}-${params.end ?? ""}-${selectedStoreId}-${selectedProduct}`}
           className="mt-6 flex flex-wrap items-end gap-4 rounded-xl bg-slate-50 p-4"
         >
           <label className="grid gap-1 text-sm font-medium text-slate-700">
@@ -176,6 +180,21 @@ export default async function ProductsReportPage({
               </select>
             </label>
           ) : null}
+          <label className="grid gap-1 text-sm font-medium text-slate-700">
+            商品
+            <select
+              name="product"
+              defaultValue={selectedProduct}
+              className="rounded-lg border border-slate-300 bg-white px-3 py-2"
+            >
+              <option value="">全部商品（排行）</option>
+              {productOptions.map((product) => (
+                <option key={product.productName} value={product.productName}>
+                  {product.productName}
+                </option>
+              ))}
+            </select>
+          </label>
           <button
             type="submit"
             className="rounded-lg bg-[#007F83] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#55AFB9]"
@@ -183,61 +202,82 @@ export default async function ProductsReportPage({
             套用篩選
           </button>
           <Link
-            href="/reports/products"
+            href={rankingOnly ? "/reports/product-ranking" : "/reports/products"}
             className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-white"
           >
             清除篩選
           </Link>
+          <a
+            href={exportHref}
+            className="rounded-lg border border-[#007F83] px-4 py-2 text-sm font-medium text-[#007F83] transition hover:bg-[#e6f4f4]"
+          >
+            匯出 Excel
+          </a>
         </form>
 
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
           <div className="rounded-xl border border-slate-200 p-5">
-            <p className="text-sm text-slate-500">已付款銷售數量</p>
+            <p className="text-sm text-slate-500">已收款銷售數量</p>
             <p className="mt-2 text-3xl font-bold text-slate-900">
               {totalQuantity}
             </p>
           </div>
           <div className="rounded-xl border border-slate-200 p-5">
-            <p className="text-sm text-slate-500">已付款營業額</p>
+            <p className="text-sm text-slate-500">已收款營業額</p>
             <p className="mt-2 text-3xl font-bold text-[#007F83]">
               {formatAmount(totalRevenue)}
             </p>
           </div>
         </div>
 
-        <div className="mt-6 grid gap-6 xl:grid-cols-2">
-          <section className="overflow-hidden rounded-xl border border-slate-200">
-            <div className="border-b border-slate-200 bg-slate-50 px-5 py-4">
-              <h2 className="font-bold text-slate-900">商品業績</h2>
-              <p className="mt-1 text-sm text-slate-500">
-                依已付款營業額排序。
-              </p>
-            </div>
-            <ProductTable
-              products={byRevenue}
-              valueLabel="已付款營業額"
-              valueFor="revenue"
-            />
-          </section>
-
+        <div className={`mt-6 grid gap-6 ${rankingOnly ? "" : "xl:grid-cols-2"}`}>
+        {rankingOnly ? (
           <section className="overflow-hidden rounded-xl border border-slate-200">
             <div className="border-b border-slate-200 bg-slate-50 px-5 py-4">
               <h2 className="font-bold text-slate-900">商品銷售排行</h2>
               <p className="mt-1 text-sm text-slate-500">
-                依已付款銷售數量排序。
+                依已收款銷售數量排序。
               </p>
             </div>
             <ProductTable
-              products={byQuantity}
-              valueLabel="已付款數量"
+              products={visibleProducts}
+              valueLabel="已收款數量"
               valueFor="quantity"
+              startRank={(page - 1) * pageSize}
             />
           </section>
+        ) : (
+          <section className="overflow-hidden rounded-xl border border-slate-200">
+            <div className="border-b border-slate-200 bg-slate-50 px-5 py-4">
+              <h2 className="font-bold text-slate-900">
+                商品業績{selectedProduct ? `：${selectedProduct}` : ""}
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                依已收款營業額排序。
+              </p>
+            </div>
+            <ProductTable
+              products={visibleProducts}
+              valueLabel="已收款營業額"
+              valueFor="revenue"
+              startRank={(page - 1) * pageSize}
+            />
+          </section>
+        )}
+        </div>
+        <div className="mt-4 flex items-center justify-between gap-3 text-sm text-slate-600">
+          <span>第 {page} 頁，每頁最多 {pageSize} 項商品。</span>
+          <div className="flex gap-2">
+            {page > 1 ? <Link href={`${rankingOnly ? "/reports/product-ranking" : "/reports/products"}?${new URLSearchParams({ ...Object.fromEntries(exportSearchParams), page: String(page - 1) })}`} className="rounded border px-3 py-2">上一頁</Link> : null}
+            {hasNextPage ? <Link href={`${rankingOnly ? "/reports/product-ranking" : "/reports/products"}?${new URLSearchParams({ ...Object.fromEntries(exportSearchParams), page: String(page + 1) })}`} className="rounded border px-3 py-2">下一頁</Link> : null}
+          </div>
         </div>
       </section>
     </main>
   );
 }
+
+export default ProductsReportPage;
 
 type ProductRow = {
   productName: string;
@@ -251,14 +291,16 @@ function ProductTable({
   products,
   valueLabel,
   valueFor,
+  startRank = 0,
 }: {
   products: ProductRow[];
   valueLabel: string;
   valueFor: "revenue" | "quantity";
+  startRank?: number;
 }) {
   if (products.length === 0) {
     return (
-      <p className="px-5 py-10 text-center text-slate-500">沒有已付款訂單。</p>
+      <p className="px-5 py-10 text-center text-slate-500">沒有已收款訂單。</p>
     );
   }
 
@@ -280,7 +322,7 @@ function ProductTable({
               key={`${product.productName}-${product.unit ?? ""}`}
               className="text-slate-700"
             >
-              <td className="px-4 py-3 font-medium">{index + 1}</td>
+              <td className="px-4 py-3 font-medium">{startRank + index + 1}</td>
               <td className="px-4 py-3">
                 <p className="font-medium">{product.productName}</p>
                 {product.unit ? (
