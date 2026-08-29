@@ -65,8 +65,8 @@
 
 ### 客戶 LINE 身分與下單
 
-- [ ] 接 LINE Login／LIFF，以 LINE User ID 查找或建立 Customer。
-- [ ] 首次登入取得顯示名稱並要求填寫手機；不做簡訊驗證。
+- [x] 接 LINE Login／LIFF：前端取得 ID Token，伺服器向 LINE 驗證後以 LINE User ID 查找或建立 Customer。
+- [x] 首次登入取得顯示名稱並要求填寫手機；不做簡訊驗證。
 - [ ] 客戶從門市 LINE 卡片進入對應門市的下單頁，不能自行切換門市。
 - [ ] 建立訂單、訂單商品快照、數量規則與客戶備註。
 

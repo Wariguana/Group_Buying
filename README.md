@@ -27,7 +27,7 @@
 
 - 客戶下單、訂單管理、取貨與付款流程。
 - 各 API 的完整總公司／分店授權規則與帳號管理畫面。
-- LINE Login、LIFF、Messaging API 與通知。
+- LINE Messaging API 與通知。
 - 客戶下單、取貨、取消、逾期未取、報表與 Excel 匯出。
 
 > 使用登入功能前，必須先設定 `AUTH_SECRET` 並透過 seed 建立管理員帳號；不可在程式碼中寫死帳密。
@@ -40,6 +40,7 @@
 - Prisma 7：資料模型、migration 與型別安全的資料庫存取
 - bcryptjs：密碼雜湊與驗證
 - jose：簽署與驗證管理員 session
+- @line/liff：LIFF 前端初始化與取得 LINE ID Token
 
 ## 加入專案前的環境準備
 
@@ -99,16 +100,18 @@ DATABASE_URL=
 DIRECT_URL=
 ```
 
-未來可能加入：
+登入與 LIFF 客戶驗證使用：
 
 ```text
 NEXT_PUBLIC_APP_URL=
 AUTH_SECRET=
 LINE_CHANNEL_ID=
-LINE_CHANNEL_SECRET=
-LINE_CHANNEL_ACCESS_TOKEN=
 NEXT_PUBLIC_LIFF_ID=
 ```
+
+`NEXT_PUBLIC_APP_URL` 是目前網站公開網址；本機 LIFF 測試時填 Cloudflare Tunnel 的 HTTPS 網址。`LINE_CHANNEL_SECRET` 與 `LINE_CHANNEL_ACCESS_TOKEN` 尚未被目前功能使用，保留給日後 LINE Messaging API 或其他授權流程。
+
+本機以 Cloudflare Tunnel 測試 LIFF 時，`next.config.ts` 會自動從 `NEXT_PUBLIC_APP_URL` 取出 Tunnel 網域，加入 Next.js 的開發模式允許來源；每次 Tunnel 網址變更後，更新 `.env.local` 並重新啟動 `npm run dev` 即可。
 
 資料庫密碼、Supabase 金鑰、LINE Secret、Access Token 都不可寫入程式碼、README 或 Git。
 
@@ -170,10 +173,11 @@ app/
     group-buys/          團購列表、建立、詳情與編輯頁（網址 /group-buys）
     home/               管理端首頁（網址 /home）
     stores/             總公司門市列表、新增與編輯頁（網址 /stores）
-  api/                 登入、登出、門市與團購 API 路由
+  api/                 登入、登出、客戶 LINE 身分、門市與團購 API 路由
   Navbar/nav.tsx       共用管理端導覽列與登出操作
   lib/prisma.ts        共用 Prisma Client（只限伺服器端）
   page.tsx             登入頁
+  liff/page.tsx        客戶 LINE LIFF 身分辨識與首次手機補填頁
 
 prisma/
   schema.prisma        Prisma 資料模型
@@ -205,3 +209,4 @@ public/                公開靜態素材
 - 不在測試環境使用真實客戶個資。
 - 不使用寫死帳密作為正式登入機制。
 - 正式上線前確認資料庫備份、權限規則與 LINE 金鑰管理方式。
+- 客戶識別只傳送 LIFF 取得的原始 ID Token；伺服器端向 LINE 驗證後，才使用回傳的 LINE User ID 查找或建立 Customer。
