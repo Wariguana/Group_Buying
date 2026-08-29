@@ -20,7 +20,7 @@ const actionConfig: Record<
 > = {
   PUBLISH: {
     label: "發布",
-    confirmMessage: "確定要發布此團購嗎？目前第一版只會更新狀態，不會發送 LINE。",
+    confirmMessage: "確定要發布此團購嗎？系統會立即將團購卡片送到所有參與門市的 LINE 群組。",
     className: "bg-[#007F83] text-white hover:bg-[#55AFB9]",
   },
   PAUSE: {
@@ -57,6 +57,7 @@ export function GroupBuyStatusActions({
 }: GroupBuyStatusActionsProps) {
   const router = useRouter();
   const [errorMessage, setErrorMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const actions = getAvailableActions(status);
@@ -69,6 +70,7 @@ export function GroupBuyStatusActions({
     }
 
     setErrorMessage("");
+    setSuccessMessage("");
     setIsSubmitting(true);
 
     try {
@@ -87,6 +89,7 @@ export function GroupBuyStatusActions({
         return;
       }
 
+      setSuccessMessage(data.message ?? "團購狀態已更新。");
       router.refresh();
     } catch {
       setErrorMessage("無法連線到伺服器，請稍後再試。");
@@ -120,6 +123,12 @@ export function GroupBuyStatusActions({
       {errorMessage ? (
         <p className="w-full text-right text-sm text-rose-600">
           {errorMessage}
+        </p>
+      ) : null}
+
+      {successMessage ? (
+        <p className="w-full text-right text-sm text-emerald-700">
+          {successMessage}
         </p>
       ) : null}
     </div>
