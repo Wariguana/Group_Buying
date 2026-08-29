@@ -42,9 +42,12 @@ export async function POST(request: Request, context: RouteContext) {
     return NextResponse.json({ message: "請先登入。" }, { status: 401 });
   }
 
-  if (user.role !== "HQ_ADMIN") {
+  const isHqAdmin = user.role === "HQ_ADMIN";
+  const isStoreAdmin = user.role === "STORE_ADMIN";
+
+  if (!isHqAdmin && (!isStoreAdmin || !user.storeId)) {
     return NextResponse.json(
-      { message: "只有總公司管理員可以變更團購狀態。" },
+      { message: "分店管理員尚未綁定門市。" },
       { status: 403 }
     );
   }
@@ -71,10 +74,14 @@ export async function POST(request: Request, context: RouteContext) {
     );
   }
 
-  const groupBuy = await prisma.groupBuy.findUnique({
-    where: {
-      id,
-    },
+  const groupBuy = await prisma.groupBuy.findFirst({
+    where: isHqAdmin
+      ? { id }
+      : {
+          id,
+          source: "STORE",
+          ownerStoreId: user.storeId!,
+        },
     select: {
       id: true,
       status: true,

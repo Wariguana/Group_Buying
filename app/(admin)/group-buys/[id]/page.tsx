@@ -155,12 +155,19 @@ export default async function GroupBuyDetailPage({
                 />
               </>
             ) : isOwnStoreGroup ? (
-            <Link
+              <>
+                <Link
                 href={`/group-buys/${groupBuy.id}/edit`}
                 className="rounded-lg bg-[#007F83] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#55AFB9]"
-            >
-                編輯本店團
-            </Link>
+                >
+                  編輯本店團
+                </Link>
+
+                <GroupBuyStatusActions
+                  groupBuyId={groupBuy.id}
+                  status={groupBuy.status}
+                />
+              </>
             ) : (
             <Link
                 href={`/group-buys/${groupBuy.id}/pickup-time`}
