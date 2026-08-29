@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/app/lib/auth";
+import { sendGroupBuyCard } from "@/app/lib/line-messaging";
 import { prisma } from "@/app/lib/prisma";
 
 export const runtime = "nodejs";
@@ -84,10 +85,25 @@ export async function POST(request: Request, context: RouteContext) {
         },
     select: {
       id: true,
+      title: true,
+      content: true,
+      productName: true,
+      unit: true,
+      groupPrice: true,
+      endAt: true,
       status: true,
-      _count: {
+      groupBuyStores: {
         select: {
-          groupBuyStores: true,
+          id: true,
+          pickupStart: true,
+          pickupEnd: true,
+          store: {
+            select: {
+              name: true,
+              enabled: true,
+              lineGroupId: true,
+            },
+          },
         },
       },
     },
@@ -97,11 +113,36 @@ export async function POST(request: Request, context: RouteContext) {
     return NextResponse.json({ message: "找不到此團購。" }, { status: 404 });
   }
 
-  if (action === "PUBLISH" && groupBuy._count.groupBuyStores === 0) {
-    return NextResponse.json(
-      { message: "至少選擇一間參與門市後才能發布。" },
-      { status: 400 }
-    );
+  if (action === "PUBLISH") {
+    if (groupBuy.groupBuyStores.length === 0) {
+      return NextResponse.json(
+        { message: "至少選擇一間參與門市後才能發布。" },
+        { status: 400 }
+      );
+    }
+
+    if (
+      !process.env.LINE_MESSAGING_CHANNEL_ACCESS_TOKEN ||
+      !process.env.NEXT_PUBLIC_LIFF_ID
+    ) {
+      return NextResponse.json(
+        { message: "尚未完成 LINE Messaging API 或 LIFF 環境設定，無法發布。" },
+        { status: 500 }
+      );
+    }
+
+    const unavailableStores = groupBuy.groupBuyStores
+      .filter((groupBuyStore) => !groupBuyStore.store.enabled || !groupBuyStore.store.lineGroupId)
+      .map((groupBuyStore) => groupBuyStore.store.name);
+
+    if (unavailableStores.length > 0) {
+      return NextResponse.json(
+        {
+          message: `以下參與門市尚未啟用或未設定 LINE 群組 ID：${unavailableStores.join("、")}`,
+        },
+        { status: 400 }
+      );
+    }
   }
 
   const nextStatus = getNextStatus(groupBuy.status, action);
@@ -126,5 +167,38 @@ export async function POST(request: Request, context: RouteContext) {
     },
   });
 
-  return NextResponse.json({ groupBuy: updatedGroupBuy });
+  if (action !== "PUBLISH") {
+    return NextResponse.json({
+      groupBuy: updatedGroupBuy,
+      message: "團購狀態已更新。",
+    });
+  }
+
+  const deliveryResults = await Promise.allSettled(
+    groupBuy.groupBuyStores.map((groupBuyStore) =>
+      sendGroupBuyCard({
+        groupBuyStoreId: groupBuyStore.id,
+        lineGroupId: groupBuyStore.store.lineGroupId!,
+        title: groupBuy.title,
+        content: groupBuy.content,
+        productName: groupBuy.productName,
+        unit: groupBuy.unit,
+        groupPrice: groupBuy.groupPrice,
+        endAt: groupBuy.endAt,
+        pickupStart: groupBuyStore.pickupStart,
+        pickupEnd: groupBuyStore.pickupEnd,
+      })
+    )
+  );
+  const failedStoreNames = deliveryResults.flatMap((result, index) =>
+    result.status === "rejected" ? [groupBuy.groupBuyStores[index].store.name] : []
+  );
+
+  return NextResponse.json({
+    groupBuy: updatedGroupBuy,
+    message:
+      failedStoreNames.length > 0
+        ? `團購已發布，但以下門市的 LINE 卡片未送出：${failedStoreNames.join("、")}`
+        : "團購已發布，LINE 團購卡片已送往所有參與門市群組。",
+  });
 }

@@ -18,7 +18,7 @@
 - 總公司專用的門市管理：列表、新增、編輯、啟用／停用與受保護的 Store API。
 - 管理端共用 Layout 與導覽列：首頁、門市列表與門市編輯頁使用相同的背景、內容寬度與導覽列。
 - 總公司團購管理：建立草稿、選擇參與門市、查看／編輯一團一商品資料與各門市取貨時間。
-- 團購狀態管理：總公司可發布、暫停或結束團購；目前發布只更新系統狀態，尚未串接 LINE 發送。
+- 團購狀態管理：總公司可發布、暫停或結束團購；發布時會將 Flex 團購卡片自動推送到參與門市的 LINE 群組。
 - 團購權限：總公司可查看與管理全部總公司團；分店目前僅能查看指派給自己門市的團購與取貨時間。
 - 分店取貨時間管理：分店可查看被指派團購，並只修改自己門市的取貨開始／結束時間。
 - 分店自開團：分店可建立、完整編輯、發布、暫停與結束只屬於自己門市的團購；總公司仍可管理全部團購。
@@ -110,9 +110,11 @@ NEXT_PUBLIC_APP_URL=
 AUTH_SECRET=
 LINE_CHANNEL_ID=
 NEXT_PUBLIC_LIFF_ID=
+LINE_MESSAGING_CHANNEL_SECRET=
+LINE_MESSAGING_CHANNEL_ACCESS_TOKEN=
 ```
 
-`NEXT_PUBLIC_APP_URL` 是目前網站公開網址；本機 LIFF 測試時填 Cloudflare Tunnel 的 HTTPS 網址。`LINE_CHANNEL_SECRET` 與 `LINE_CHANNEL_ACCESS_TOKEN` 尚未被目前功能使用，保留給日後 LINE Messaging API 或其他授權流程。
+`NEXT_PUBLIC_APP_URL` 是目前網站公開網址；本機 LIFF 測試時填 Cloudflare Tunnel 的 HTTPS 網址。`LINE_MESSAGING_CHANNEL_SECRET` 用於驗證 LINE webhook 的 `x-line-signature`；`LINE_MESSAGING_CHANNEL_ACCESS_TOKEN` 只會在日後發送 LINE 訊息時由伺服器端使用。
 
 本機以 Cloudflare Tunnel 測試 LIFF 時，`next.config.ts` 會自動從 `NEXT_PUBLIC_APP_URL` 取出 Tunnel 網域，加入 Next.js 的開發模式允許來源；每次 Tunnel 網址變更後，更新 `.env.local` 並重新啟動 `npm run dev` 即可。
 
@@ -163,7 +165,7 @@ npm run db:seed
 - `/orders`：總公司可查看全部訂單；分店只能查看自己門市的訂單。依門市團購分組，並可將該店仍為「已訂購」的訂單批次標記為「已到貨」。
 - `GET`、`POST /api/group-buys`：依角色讀取團購資料；總公司建立多門市團，分店建立時由伺服器自動綁定自己的門市。
 - `PATCH /api/group-buys/[id]`：總公司可更新任一團購及參與門市設定；分店僅可更新自己建立的本店團。若參與門市已有訂單，系統會阻止總公司直接移除該門市。
-- `POST /api/group-buys/[id]/status`：總公司可操作全部團；分店僅可發布、暫停或結束自己建立的本店團。發布前必須至少選擇一家參與門市。
+- `POST /api/group-buys/[id]/status`：總公司可操作全部團；分店僅可發布、暫停或結束自己建立的本店團。發布前必須至少選擇一家參與門市、所有門市皆已設定 LINE 群組 ID；發布後會逐店推送 Flex 團購卡片與 LIFF 下單連結。
 - `PATCH /api/group-buys/[id]/pickup-time`：僅分店管理員可更新自己門市的 `GroupBuyStore` 取貨時間。
 - `GET /api/customer/group-buy-stores/[id]`：需客戶 LINE session，僅回傳已發布、處於下單時間內且門市啟用中的指定團購資料。
 - `POST /api/orders`：需已補手機的客戶 LINE session；由伺服器建立商品與價格快照，並驗證團購狀態、時間、最低訂量、數量倍數、每人限購及團購總上限。
@@ -171,8 +173,9 @@ npm run db:seed
 - `POST /api/orders/[id]/cancel`：僅目前客戶可取消自己的 `ORDERED` 訂單，且團購結束時間尚未到；取消不刪除訂單。
 - `POST /api/group-buy-stores/[id]/arrive`：總公司可處理任一門市；分店只能處理自己的門市團購。僅將狀態為 `ORDERED` 的訂單批次更新為 `ARRIVED`，不影響已取消或已處理訂單。
 - `POST /api/orders/[id]/pickup`：總公司可處理任一門市；分店只能處理自己的訂單。僅將狀態為 `ARRIVED` 的單筆訂單更新為 `PICKED_UP_PAID` 並寫入 `paidAt`。
+- `POST /api/line/webhook`：先以 `LINE_MESSAGING_CHANNEL_SECRET` 驗證 LINE 簽章，再接收 webhook 事件。目前僅將事件種類與群組 ID 寫入伺服器日誌，避免自動錯綁門市。
 
-目前團購狀態包含草稿、已發布、暫停、已結束。第一版的發布動作尚未發送 LINE 卡片，LINE 串接會在後續功能實作。
+目前團購狀態包含草稿、已發布、暫停、已結束。發布會自動發送 LINE 團購卡片；系統不另建發送紀錄表，若 LINE 發送失敗會在當下回報管理員。
 
 ## 目錄結構
 
