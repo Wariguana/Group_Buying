@@ -22,6 +22,7 @@
 - 團購權限：總公司可查看與管理全部總公司團；分店目前僅能查看指派給自己門市的團購與取貨時間。
 - 分店取貨時間管理：分店可查看被指派團購，並只修改自己門市的取貨開始／結束時間。
 - 分店自開團：分店可建立、完整編輯、發布、暫停與結束只屬於自己門市的團購；總公司仍可管理全部團購。
+- 客戶 LIFF 下單：已完成 LINE 客戶驗證後，可透過固定的 `GroupBuyStore` 連結查看指定分店團購、填寫數量與備註、建立獨立訂單；不支援自行切換門市。
 
 ### 尚未完成
 
@@ -161,6 +162,8 @@ npm run db:seed
 - `PATCH /api/group-buys/[id]`：總公司可更新任一團購及參與門市設定；分店僅可更新自己建立的本店團。若參與門市已有訂單，系統會阻止總公司直接移除該門市。
 - `POST /api/group-buys/[id]/status`：總公司可操作全部團；分店僅可發布、暫停或結束自己建立的本店團。發布前必須至少選擇一家參與門市。
 - `PATCH /api/group-buys/[id]/pickup-time`：僅分店管理員可更新自己門市的 `GroupBuyStore` 取貨時間。
+- `GET /api/customer/group-buy-stores/[id]`：需客戶 LINE session，僅回傳已發布、處於下單時間內且門市啟用中的指定團購資料。
+- `POST /api/orders`：需已補手機的客戶 LINE session；由伺服器建立商品與價格快照，並驗證團購狀態、時間、最低訂量、數量倍數、每人限購及團購總上限。
 
 目前團購狀態包含草稿、已發布、暫停、已結束。第一版的發布動作尚未發送 LINE 卡片，LINE 串接會在後續功能實作。
 
@@ -177,7 +180,7 @@ app/
   Navbar/nav.tsx       共用管理端導覽列與登出操作
   lib/prisma.ts        共用 Prisma Client（只限伺服器端）
   page.tsx             登入頁
-  liff/page.tsx        客戶 LINE LIFF 身分辨識與首次手機補填頁
+  liff/                客戶 LINE LIFF 身分辨識、手機補填與指定分店團購入口
 
 prisma/
   schema.prisma        Prisma 資料模型
