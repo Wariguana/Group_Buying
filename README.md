@@ -25,13 +25,15 @@
 - 客戶 LIFF 下單：已完成 LINE 客戶驗證後，可透過固定的 `GroupBuyStore` 連結查看指定分店團購、填寫數量與備註、建立獨立訂單；不支援自行切換門市。
 - 客戶「我的訂單」：可跨分店查看訂單，依門市與團購分組；結團前可取消自己仍為「已下單」的訂單，取消後保留原訂單紀錄。
 - 管理端訂單列表：總公司可查看全部門市訂單；分店管理員只可查看自己門市的訂單。
+- 逾期未取任務：已提供受密鑰保護、可重複執行的處理端點；正式環境尚待設定定時呼叫。
+- LINE Messaging API：已完成 webhook 驗證、群組 ID 取得與發布團購 Flex 卡片至指定門市群組。
 
 ### 尚未完成
 
-- 逾期未取流程。
+- 正式環境排程設定（逾期未取任務已完成，尚未安排定時呼叫）。
 - 各 API 的完整總公司／分店授權規則與帳號管理畫面。
-- LINE Messaging API 與通知。
-- 自動逾期未取、報表與 Excel 匯出。
+- 到貨通知的對象與時機確認後實作。
+- 報表與 Excel 匯出。
 
 > 使用登入功能前，必須先設定 `AUTH_SECRET` 並透過 seed 建立管理員帳號；不可在程式碼中寫死帳密。
 
@@ -112,9 +114,12 @@ LINE_CHANNEL_ID=
 NEXT_PUBLIC_LIFF_ID=
 LINE_MESSAGING_CHANNEL_SECRET=
 LINE_MESSAGING_CHANNEL_ACCESS_TOKEN=
+CRON_SECRET=
 ```
 
 `NEXT_PUBLIC_APP_URL` 是目前網站公開網址；本機 LIFF 測試時填 Cloudflare Tunnel 的 HTTPS 網址。`LINE_MESSAGING_CHANNEL_SECRET` 用於驗證 LINE webhook 的 `x-line-signature`；`LINE_MESSAGING_CHANNEL_ACCESS_TOKEN` 只會在日後發送 LINE 訊息時由伺服器端使用。
+
+`CRON_SECRET` 是給正式環境排程使用的隨機長字串。排程必須以 `Authorization: Bearer <CRON_SECRET>` 呼叫內部逾期處理 API；不要將它放入前端或公開網址。
 
 本機以 Cloudflare Tunnel 測試 LIFF 時，`next.config.ts` 會自動從 `NEXT_PUBLIC_APP_URL` 取出 Tunnel 網域，加入 Next.js 的開發模式允許來源；每次 Tunnel 網址變更後，更新 `.env.local` 並重新啟動 `npm run dev` 即可。
 
@@ -174,6 +179,7 @@ npm run db:seed
 - `POST /api/group-buy-stores/[id]/arrive`：總公司可處理任一門市；分店只能處理自己的門市團購。僅將狀態為 `ORDERED` 的訂單批次更新為 `ARRIVED`，不影響已取消或已處理訂單。
 - `POST /api/orders/[id]/pickup`：總公司可處理任一門市；分店只能處理自己的訂單。僅將狀態為 `ARRIVED` 的單筆訂單更新為 `PICKED_UP_PAID` 並寫入 `paidAt`。
 - `POST /api/line/webhook`：先以 `LINE_MESSAGING_CHANNEL_SECRET` 驗證 LINE 簽章，再接收 webhook 事件。目前僅將事件種類與群組 ID 寫入伺服器日誌，避免自動錯綁門市。
+- `POST /api/internal/expire-uncollected-orders`：僅供正式排程以 `CRON_SECRET` 呼叫。將取貨結束時間已過、仍為 `ORDERED` 或 `ARRIVED` 的訂單標記為 `EXPIRED_UNCOLLECTED` 並寫入 `expiredAt`；可安全重複執行。
 
 目前團購狀態包含草稿、已發布、暫停、已結束。發布會自動發送 LINE 團購卡片；系統不另建發送紀錄表，若 LINE 發送失敗會在當下回報管理員。
 
