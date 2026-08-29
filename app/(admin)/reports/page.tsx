@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { getCurrentUser } from "@/app/lib/auth";
 import { prisma } from "@/app/lib/prisma";
+import { getGroupBuyStartDateFilter } from "@/app/lib/reporting";
 
 type ReportsPageProps = {
   searchParams: Promise<{
@@ -11,17 +12,6 @@ type ReportsPageProps = {
     store?: string;
   }>;
 };
-
-function getTaiwanDate(value: string | undefined, isEndOfDay = false) {
-  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    return null;
-  }
-
-  const time = isEndOfDay ? "T23:59:59.999" : "T00:00:00";
-  const date = new Date(`${value}${time}+08:00`);
-
-  return Number.isNaN(date.getTime()) ? null : date;
-}
 
 function formatAmount(amount: string) {
   return new Intl.NumberFormat("zh-TW", {
@@ -60,8 +50,10 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
     isHqAdmin && stores.some((store) => store.id === params.store)
       ? params.store!
       : "";
-  const startAt = getTaiwanDate(params.start);
-  const endAt = getTaiwanDate(params.end, true);
+  const groupBuyDateFilter = getGroupBuyStartDateFilter(
+    params.start,
+    params.end,
+  );
 
   const storeScope = !isHqAdmin
     ? {
@@ -77,31 +69,10 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
         }
       : {};
 
-  const createdAtFilter =
-    startAt || endAt
-      ? {
-          createdAt: {
-            ...(startAt ? { gte: startAt } : {}),
-            ...(endAt ? { lte: endAt } : {}),
-          },
-        }
-      : {};
-
-  const paidAtFilter =
-    startAt || endAt
-      ? {
-          paidAt: {
-            ...(startAt ? { gte: startAt } : {}),
-            ...(endAt ? { lte: endAt } : {}),
-          },
-        }
-      : {};
-
   const [orders, paidOrders] = await Promise.all([
     prisma.order.findMany({
       where: {
-        ...storeScope,
-        ...createdAtFilter,
+        AND: [storeScope, groupBuyDateFilter],
       },
       select: {
         groupBuyStoreId: true,
@@ -126,8 +97,7 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
     }),
     prisma.order.findMany({
       where: {
-        ...storeScope,
-        ...paidAtFilter,
+        AND: [storeScope, groupBuyDateFilter],
         status: "PICKED_UP_PAID",
       },
       select: {
@@ -232,30 +202,55 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
         <h1 className="mt-2 text-3xl font-bold text-slate-900">訂單報表</h1>
 
         <p className="mt-3 text-slate-600">
-          訂購量依下單時間統計；營業額僅計算已取貨並付款的訂單。
+          全部資料依開團日期篩選；營業額僅計算已取貨並付款的訂單。
         </p>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <Link
+            href="/reports/openings"
+            className="rounded-xl border border-slate-200 p-4 transition hover:border-[#007F83] hover:bg-slate-50"
+          >
+            <p className="font-bold text-slate-900">開團商品彙總</p>
+            <p className="mt-1 text-sm text-slate-500">
+              門市、團購、商品與收款狀態
+            </p>
+          </Link>
+          <Link
+            href="/reports/orders"
+            className="rounded-xl border border-slate-200 p-4 transition hover:border-[#007F83] hover:bg-slate-50"
+          >
+            <p className="font-bold text-slate-900">訂單銷售明細</p>
+            <p className="mt-1 text-sm text-slate-500">逐筆查帳與核對</p>
+          </Link>
+          <Link
             href="/reports/products"
             className="rounded-xl border border-slate-200 p-4 transition hover:border-[#007F83] hover:bg-slate-50"
           >
-            <p className="font-bold text-slate-900">商品分析</p>
-            <p className="mt-1 text-sm text-slate-500">業績與銷售排行</p>
+            <p className="font-bold text-slate-900">商品業績報表</p>
+            <p className="mt-1 text-sm text-slate-500">依商品比較已收款金額</p>
+          </Link>
+          <Link
+            href="/reports/product-ranking"
+            className="rounded-xl border border-slate-200 p-4 transition hover:border-[#007F83] hover:bg-slate-50"
+          >
+            <p className="font-bold text-slate-900">商品銷售排行報表</p>
+            <p className="mt-1 text-sm text-slate-500">依銷售數量查看商品排行</p>
           </Link>
           <Link
             href="/reports/group-buys"
             className="rounded-xl border border-slate-200 p-4 transition hover:border-[#007F83] hover:bg-slate-50"
           >
-            <p className="font-bold text-slate-900">團購分析</p>
-            <p className="mt-1 text-sm text-slate-500">依團購名稱彙總</p>
+            <p className="font-bold text-slate-900">訂單銷售－依團購名稱</p>
+            <p className="mt-1 text-sm text-slate-500">
+              依團購名稱逐筆查詢訂單
+            </p>
           </Link>
           <Link
             href="/reports/customers"
             className="rounded-xl border border-slate-200 p-4 transition hover:border-[#007F83] hover:bg-slate-50"
           >
-            <p className="font-bold text-slate-900">客戶分析</p>
-            <p className="mt-1 text-sm text-slate-500">依客戶彙總消費</p>
+            <p className="font-bold text-slate-900">訂單銷售－依客戶</p>
+            <p className="mt-1 text-sm text-slate-500">用姓名或電話追查訂單</p>
           </Link>
           <Link
             href="/reports/store-ranking"
@@ -345,7 +340,7 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
           </div>
 
           <div className="rounded-xl border border-slate-200 p-5">
-            <p className="text-sm text-slate-500">已付款營業額</p>
+            <p className="text-sm text-slate-500">已收款營業額</p>
             <p className="mt-2 text-3xl font-bold text-[#007F83]">
               {formatAmount(paidRevenue.toString())}
             </p>
@@ -377,7 +372,7 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
           <div className="border-b border-slate-200 bg-slate-50 px-5 py-4">
             <h2 className="font-bold text-slate-900">門市與團購明細</h2>
             <p className="mt-1 text-sm text-slate-500">
-              訂單數與訂購數量依下單時間；已付款營業額依付款取貨時間。
+              全部資料依開團日期篩選；已收款營業額僅計入已取貨並付款訂單。
             </p>
           </div>
 
@@ -394,7 +389,7 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
                     <th className="px-4 py-3">團購／商品</th>
                     <th className="px-4 py-3 text-right">訂單數</th>
                     <th className="px-4 py-3 text-right">訂購數量</th>
-                    <th className="px-4 py-3 text-right">已付款營業額</th>
+                    <th className="px-4 py-3 text-right">已收款營業額</th>
                   </tr>
                 </thead>
 

@@ -115,6 +115,7 @@ model GroupBuy {
   updatedAt DateTime @updatedAt
 
   @@index([source, ownerStoreId])
+  @@index([startAt])
 }
 
 model GroupBuyStore {
