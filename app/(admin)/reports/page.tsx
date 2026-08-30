@@ -69,42 +69,136 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
         }
       : {};
 
-  const [orders, paidOrders] = await Promise.all([
-    prisma.order.findMany({
+  const orderWhere = {
+    AND: [storeScope, groupBuyDateFilter],
+  };
+
+  /*
+   * 營運總覽統計全部交給 PostgreSQL 計算。
+   *
+   * 不再把所有 Order 拉回 Node.js。
+   */
+  const [
+    totalOrderCount,
+    totalQuantityResult,
+    paidRevenueResult,
+    statusGroups,
+    detailGroups,
+  ] = await Promise.all([
+    // 訂單總數
+    prisma.order.count({
+      where: orderWhere,
+    }),
+
+    // 訂購總數量
+    // 維持原本邏輯：取消訂單不計算數量
+    prisma.order.aggregate({
       where: {
         AND: [storeScope, groupBuyDateFilter],
-      },
-      select: {
-        groupBuyStoreId: true,
-        status: true,
-        quantity: true,
-        groupBuyStore: {
-          select: {
-            store: {
-              select: {
-                name: true,
-              },
-            },
-            groupBuy: {
-              select: {
-                title: true,
-                productName: true,
-              },
-            },
-          },
+        status: {
+          not: "CANCELED",
         },
       },
+      _sum: {
+        quantity: true,
+      },
     }),
-    prisma.order.findMany({
+
+    // 已收款營業額
+    prisma.order.aggregate({
       where: {
         AND: [storeScope, groupBuyDateFilter],
         status: "PICKED_UP_PAID",
       },
-      select: {
-        groupBuyStoreId: true,
+      _sum: {
         totalAmount: true,
-        groupBuyStore: {
+      },
+    }),
+
+    // 全部訂單狀態數量
+    prisma.order.groupBy({
+      by: ["status"],
+      where: orderWhere,
+      _count: {
+        _all: true,
+      },
+    }),
+
+    /*
+     * 門市 × 團購明細
+     *
+     * 不取得完整 Order，
+     * 只依 GroupBuyStore + status 做彙總。
+     */
+    prisma.order.groupBy({
+      by: ["groupBuyStoreId", "status"],
+      where: orderWhere,
+      _count: {
+        _all: true,
+      },
+      _sum: {
+        quantity: true,
+        totalAmount: true,
+      },
+    }),
+  ]);
+
+  const totalQuantity =
+    totalQuantityResult._sum.quantity ?? 0;
+
+  const paidRevenue =
+    Number(paidRevenueResult._sum.totalAmount ?? 0);
+
+  /*
+   * 把：
+   *
+   * ORDERED -> 10
+   * ARRIVED -> 5
+   * PICKED_UP_PAID -> 8
+   *
+   * 整理成 Map，畫面查詢時不用 filter。
+   */
+  const statusCounts = new Map(
+    statusGroups.map((row) => [
+      row.status,
+      row._count._all,
+    ]),
+  );
+
+  const statusCount = (status: string) =>
+    statusCounts.get(status) ?? 0;
+
+  /*
+   * detailGroups 裡目前只有：
+   *
+   * groupBuyStoreId
+   * status
+   * count
+   * quantity
+   * totalAmount
+   *
+   * 還沒有門市名稱、團購名稱。
+   *
+   * 所以只針對實際有訂單的 GroupBuyStore
+   * 再查一次 metadata。
+   */
+  const groupBuyStoreIds = [
+    ...new Set(
+      detailGroups.map((row) => row.groupBuyStoreId),
+    ),
+  ];
+
+  const groupBuyStoreDetails =
+    groupBuyStoreIds.length === 0
+      ? []
+      : await prisma.groupBuyStore.findMany({
+          where: {
+            id: {
+              in: groupBuyStoreIds,
+            },
+          },
           select: {
+            id: true,
             store: {
               select: {
                 name: true,
@@ -117,22 +211,7 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
               },
             },
           },
-        },
-      },
-    }),
-  ]);
-
-  const statusCount = (status: string) =>
-    orders.filter((order) => order.status === status).length;
-
-  const totalQuantity = orders
-    .filter((order) => order.status !== "CANCELED")
-    .reduce((total, order) => total + order.quantity, 0);
-
-  const paidRevenue = paidOrders.reduce(
-    (total, order) => total + Number(order.totalAmount),
-    0,
-  );
+        });
 
   const detailByGroupBuyStore = new Map<
     string,
@@ -147,49 +226,70 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
     }
   >();
 
-  for (const order of orders) {
-    const existing = detailByGroupBuyStore.get(order.groupBuyStoreId);
-
-    if (existing) {
-      existing.orderCount += 1;
-      existing.quantity += order.status === "CANCELED" ? 0 : order.quantity;
-      continue;
-    }
-
-    detailByGroupBuyStore.set(order.groupBuyStoreId, {
-      groupBuyStoreId: order.groupBuyStoreId,
-      storeName: order.groupBuyStore.store.name,
-      groupBuyTitle: order.groupBuyStore.groupBuy.title,
-      productName: order.groupBuyStore.groupBuy.productName,
-      orderCount: 1,
-      quantity: order.status === "CANCELED" ? 0 : order.quantity,
+  /*
+   * 先建立每個 GroupBuyStore 的基本資料。
+   */
+  for (const item of groupBuyStoreDetails) {
+    detailByGroupBuyStore.set(item.id, {
+      groupBuyStoreId: item.id,
+      storeName: item.store.name,
+      groupBuyTitle: item.groupBuy.title,
+      productName: item.groupBuy.productName,
+      orderCount: 0,
+      quantity: 0,
       paidRevenue: 0,
     });
   }
 
-  for (const order of paidOrders) {
-    const existing = detailByGroupBuyStore.get(order.groupBuyStoreId);
+  /*
+   * 再把 PostgreSQL 算好的彙總結果塞進去。
+   *
+   * Node.js 現在處理的是：
+   * 「每個團每個狀態一筆」
+   *
+   * 不是：
+   * 「每一張 Order 一筆」。
+   */
+  for (const group of detailGroups) {
+    const detail =
+      detailByGroupBuyStore.get(
+        group.groupBuyStoreId,
+      );
 
-    if (existing) {
-      existing.paidRevenue += Number(order.totalAmount);
+    if (!detail) {
       continue;
     }
 
-    detailByGroupBuyStore.set(order.groupBuyStoreId, {
-      groupBuyStoreId: order.groupBuyStoreId,
-      storeName: order.groupBuyStore.store.name,
-      groupBuyTitle: order.groupBuyStore.groupBuy.title,
-      productName: order.groupBuyStore.groupBuy.productName,
-      orderCount: 0,
-      quantity: 0,
-      paidRevenue: Number(order.totalAmount),
-    });
+    // 所有狀態都算訂單數
+    detail.orderCount += group._count._all;
+
+    // 保持原本邏輯：
+    // CANCELED 不計算訂購數量
+    if (group.status !== "CANCELED") {
+      detail.quantity +=
+        group._sum.quantity ?? 0;
+    }
+
+    // 營業額只計算已取貨付款
+    if (group.status === "PICKED_UP_PAID") {
+      detail.paidRevenue += Number(
+        group._sum.totalAmount ?? 0,
+      );
+    }
   }
 
-  const detailRows = Array.from(detailByGroupBuyStore.values()).sort(
+  const detailRows = Array.from(
+    detailByGroupBuyStore.values(),
+  ).sort(
     (left, right) =>
-      left.storeName.localeCompare(right.storeName, "zh-TW") ||
-      left.groupBuyTitle.localeCompare(right.groupBuyTitle, "zh-TW"),
+      left.storeName.localeCompare(
+        right.storeName,
+        "zh-TW",
+      ) ||
+      left.groupBuyTitle.localeCompare(
+        right.groupBuyTitle,
+        "zh-TW",
+      ),
   );
 
   return (
@@ -321,7 +421,7 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
           <div className="rounded-xl border border-slate-200 p-5">
             <p className="text-sm text-slate-500">訂單數</p>
             <p className="mt-2 text-3xl font-bold text-slate-900">
-              {orders.length}
+              {totalOrderCount}
             </p>
           </div>
 

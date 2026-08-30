@@ -45,22 +45,33 @@ export function OrderArrivalActions({
   }
 
   return (
-    <div className="flex flex-col items-end gap-2">
+    <div className="flex flex-col items-end">
       <button
         type="button"
         disabled={orderedCount === 0 || isSubmitting}
         onClick={handleArrival}
-        className="rounded-lg bg-[#007F83] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#55AFB9] disabled:cursor-not-allowed disabled:opacity-50"
+        className="inline-flex h-9 items-center justify-center rounded-lg bg-[#007F83] px-4 text-sm font-medium text-white transition hover:bg-[#55AFB9] disabled:cursor-not-allowed disabled:opacity-50"
       >
         {isSubmitting ? "處理中…" : "本團標記已到貨"}
       </button>
 
-      <p className="text-xs text-slate-500">
-        {orderedCount > 0 ? `將更新 ${orderedCount} 筆已訂購訂單` : "目前沒有待到貨訂單"}
+      <p className="mt-2 text-xs text-slate-500">
+        {orderedCount > 0
+          ? `將更新 ${orderedCount} 筆已訂購訂單`
+          : "目前沒有待到貨訂單"}
       </p>
 
-      {successMessage ? <p className="text-sm text-emerald-700">{successMessage}</p> : null}
-      {errorMessage ? <p className="text-sm text-rose-600">{errorMessage}</p> : null}
+      {successMessage ? (
+        <p className="mt-2 text-sm text-emerald-700">
+          {successMessage}
+        </p>
+      ) : null}
+
+      {errorMessage ? (
+        <p className="mt-2 text-sm text-rose-600">
+          {errorMessage}
+        </p>
+      ) : null}
     </div>
   );
 }
