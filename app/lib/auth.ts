@@ -1,11 +1,15 @@
 import "server-only";
 
+import { cache } from "react";
 import { cookies } from "next/headers";
 
 import { prisma } from "@/app/lib/prisma";
-import { SESSION_COOKIE_NAME, verifySessionToken } from "@/app/lib/session";
+import {
+  SESSION_COOKIE_NAME,
+  verifySessionToken,
+} from "@/app/lib/session";
 
-export async function getCurrentUser() {
+export const getCurrentUser = cache(async () => {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
   const session = await verifySessionToken(token);
@@ -15,7 +19,9 @@ export async function getCurrentUser() {
   }
 
   const user = await prisma.user.findUnique({
-    where: { id: session.userId },
+    where: {
+      id: session.userId,
+    },
     select: {
       id: true,
       username: true,
@@ -35,4 +41,4 @@ export async function getCurrentUser() {
   }
 
   return user;
-}
+});

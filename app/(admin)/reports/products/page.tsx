@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { getCurrentUser } from "@/app/lib/auth";
 import { prisma } from "@/app/lib/prisma";
+import { ExportButton } from "../export-button";
 import { getGroupBuyStartDateFilter } from "@/app/lib/reporting";
 
 type ProductsReportPageProps = {
@@ -207,12 +208,7 @@ export async function ProductsReportPage({
           >
             清除篩選
           </Link>
-          <a
-            href={exportHref}
-            className="rounded-lg border border-[#007F83] px-4 py-2 text-sm font-medium text-[#007F83] transition hover:bg-[#e6f4f4]"
-          >
-            匯出 Excel
-          </a>
+          <ExportButton href={exportHref} />
         </form>
 
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
