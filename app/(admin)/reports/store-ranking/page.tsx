@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { getCurrentUser } from "@/app/lib/auth";
 import { prisma } from "@/app/lib/prisma";
+import { ExportButton } from "../export-button";
 import { getGroupBuyStartDateFilter } from "@/app/lib/reporting";
 
 type StoreRankingPageProps = {
@@ -219,7 +220,7 @@ export default async function StoreRankingPage({
             清除篩選
           </Link>
 
-          <a
+          <ExportButton
             href={`/api/reports/store-ranking/export${
               params.start || params.end
                 ? `?${new URLSearchParams({
@@ -232,10 +233,7 @@ export default async function StoreRankingPage({
                   })}`
                 : ""
             }`}
-            className="rounded-lg border border-[#007F83] px-4 py-2 text-sm font-medium text-[#007F83]"
-          >
-            匯出 Excel
-          </a>
+          />
         </form>
 
         <div className="mt-6 overflow-x-auto rounded-xl border border-slate-200">

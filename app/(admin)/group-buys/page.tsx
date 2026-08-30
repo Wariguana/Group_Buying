@@ -65,11 +65,6 @@ export default async function GroupBuysPage({
     Number.parseInt(params.page ?? "1", 10) || 1
   );
 
-  /*
-   * =========================
-   * 總公司
-   * =========================
-   */
   if (isHqAdmin) {
     const groupBuys = await prisma.groupBuy.findMany({
       orderBy: [
@@ -258,11 +253,6 @@ export default async function GroupBuysPage({
     );
   }
 
-  /*
-   * =========================
-   * 分店
-   * =========================
-   */
   if (!user.storeId) {
     redirect("/home");
   }

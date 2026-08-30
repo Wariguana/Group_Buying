@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/app/lib/auth";
 import { prisma } from "@/app/lib/prisma";
 import { getTaiwanReportDate } from "@/app/lib/reporting";
 import { ReportHeader, ReportShell } from "../report-ui";
+import { ExportButton } from "../export-button";
 
 export default async function OpeningsReportPage({
   searchParams,
@@ -421,7 +422,7 @@ export default async function OpeningsReportPage({
           套用篩選
         </button>
 
-        <a
+        <ExportButton
           href={`/api/reports/openings/export?${new URLSearchParams(
             {
               ...(params.start
@@ -444,16 +445,12 @@ export default async function OpeningsReportPage({
 
               ...(groupBuyId
                 ? {
-                    groupBuy:
-                      groupBuyId,
+                    groupBuy: groupBuyId,
                   }
                 : {}),
             },
           )}`}
-          className="rounded-lg border border-[#007F83] px-4 py-2 text-sm font-medium text-[#007F83] transition hover:bg-[#e6f4f4]"
-        >
-          匯出 Excel
-        </a>
+        />
       </form>
 
       <div className="mt-6 overflow-x-auto rounded-xl border border-slate-900">

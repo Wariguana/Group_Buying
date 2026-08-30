@@ -73,11 +73,6 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
     AND: [storeScope, groupBuyDateFilter],
   };
 
-  /*
-   * 營運總覽統計全部交給 PostgreSQL 計算。
-   *
-   * 不再把所有 Order 拉回 Node.js。
-   */
   const [
     totalOrderCount,
     totalQuantityResult,
@@ -90,8 +85,6 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
       where: orderWhere,
     }),
 
-    // 訂購總數量
-    // 維持原本邏輯：取消訂單不計算數量
     prisma.order.aggregate({
       where: {
         AND: [storeScope, groupBuyDateFilter],
@@ -104,7 +97,6 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
       },
     }),
 
-    // 已收款營業額
     prisma.order.aggregate({
       where: {
         AND: [storeScope, groupBuyDateFilter],
@@ -115,7 +107,6 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
       },
     }),
 
-    // 全部訂單狀態數量
     prisma.order.groupBy({
       by: ["status"],
       where: orderWhere,
@@ -124,12 +115,6 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
       },
     }),
 
-    /*
-     * 門市 × 團購明細
-     *
-     * 不取得完整 Order，
-     * 只依 GroupBuyStore + status 做彙總。
-     */
     prisma.order.groupBy({
       by: ["groupBuyStoreId", "status"],
       where: orderWhere,
@@ -149,16 +134,7 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
   const paidRevenue =
     Number(paidRevenueResult._sum.totalAmount ?? 0);
 
-  /*
-   * 把：
-   *
-   * ORDERED -> 10
-   * ARRIVED -> 5
-   * PICKED_UP_PAID -> 8
-   *
-   * 整理成 Map，畫面查詢時不用 filter。
-   */
-  const statusCounts = new Map(
+  const statusCounts = new Map<string, number>(
     statusGroups.map((row) => [
       row.status,
       row._count._all,
@@ -168,20 +144,6 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
   const statusCount = (status: string) =>
     statusCounts.get(status) ?? 0;
 
-  /*
-   * detailGroups 裡目前只有：
-   *
-   * groupBuyStoreId
-   * status
-   * count
-   * quantity
-   * totalAmount
-   *
-   * 還沒有門市名稱、團購名稱。
-   *
-   * 所以只針對實際有訂單的 GroupBuyStore
-   * 再查一次 metadata。
-   */
   const groupBuyStoreIds = [
     ...new Set(
       detailGroups.map((row) => row.groupBuyStoreId),
@@ -226,9 +188,6 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
     }
   >();
 
-  /*
-   * 先建立每個 GroupBuyStore 的基本資料。
-   */
   for (const item of groupBuyStoreDetails) {
     detailByGroupBuyStore.set(item.id, {
       groupBuyStoreId: item.id,
@@ -241,15 +200,6 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
     });
   }
 
-  /*
-   * 再把 PostgreSQL 算好的彙總結果塞進去。
-   *
-   * Node.js 現在處理的是：
-   * 「每個團每個狀態一筆」
-   *
-   * 不是：
-   * 「每一張 Order 一筆」。
-   */
   for (const group of detailGroups) {
     const detail =
       detailByGroupBuyStore.get(
@@ -260,11 +210,8 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
       continue;
     }
 
-    // 所有狀態都算訂單數
     detail.orderCount += group._count._all;
 
-    // 保持原本邏輯：
-    // CANCELED 不計算訂購數量
     if (group.status !== "CANCELED") {
       detail.quantity +=
         group._sum.quantity ?? 0;

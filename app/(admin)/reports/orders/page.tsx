@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/app/lib/auth";
 import { prisma } from "@/app/lib/prisma";
 import { getGroupBuyStartDateFilter } from "@/app/lib/reporting";
+import { ExportButton } from "../export-button";
 import { ReportFilters, ReportHeader, ReportShell } from "../report-ui";
 
 type Props = {
@@ -220,12 +221,9 @@ export default async function OrderSalesReport({ searchParams }: Props) {
         <Link href="/reports/orders" className="rounded-lg border px-4 py-2">
           清除篩選
         </Link>
-        <a
+        <ExportButton
           href={`/api/reports/orders/export?${exportParams}`}
-          className="rounded-lg border border-[#007F83] px-4 py-2 text-[#007F83]"
-        >
-          匯出 Excel
-        </a>
+        />
       </ReportFilters>
       <div className="mt-6 overflow-x-auto rounded-xl border">
         <table className="min-w-full text-left text-sm">
