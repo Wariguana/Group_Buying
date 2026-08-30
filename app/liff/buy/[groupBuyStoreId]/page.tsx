@@ -227,7 +227,7 @@ export default function LiffBuyPage() {
                 <img
                   src={groupBuyStore.groupBuy.imageUrls[0]}
                   alt={groupBuyStore.groupBuy.productName}
-                  className="aspect-video w-full object-cover"
+                  className="h-auto w-full object-contain"
                 />
               ) : null}
               <div className="space-y-4 p-6">
