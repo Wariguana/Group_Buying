@@ -48,11 +48,16 @@ export default async function OrdersPage({
       },
     },
 
-    orderBy: {
+  orderBy: [
+    {
       groupBuy: {
         createdAt: "desc",
       },
     },
+    {
+      id: "desc",
+    },
+  ],
 
     skip: (page - 1) * pageSize,
     take: pageSize + 1,
@@ -251,7 +256,7 @@ export default async function OrdersPage({
           </div>
         )}
 
-        {visibleGroupBuyStores.length > 0 ? (
+        {page > 1 || visibleGroupBuyStores.length > 0 ? (
           <div className="mt-6 flex items-center justify-between gap-3">
             <span className="text-sm text-slate-500">
               第 {page} 頁，每頁最多 {pageSize} 團

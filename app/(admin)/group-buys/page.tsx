@@ -222,7 +222,7 @@ export default async function GroupBuysPage({
           </table>
         </div>
 
-        {visibleGroupBuys.length > 0 ? (
+        {page > 1 || visibleGroupBuys.length > 0 ? (
           <div className="mt-6 flex items-center justify-between gap-3">
             <span className="text-sm text-slate-500">
               第 {page} 頁，每頁最多 {PAGE_SIZE} 團
@@ -438,7 +438,7 @@ export default async function GroupBuysPage({
         </table>
       </div>
 
-      {visibleAssignedGroupBuys.length > 0 ? (
+      {page > 1 || visibleAssignedGroupBuys.length > 0 ? (
         <div className="mt-6 flex items-center justify-between gap-3">
           <span className="text-sm text-slate-500">
             第 {page} 頁，每頁最多 {PAGE_SIZE} 團
