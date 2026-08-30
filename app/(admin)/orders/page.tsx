@@ -17,10 +17,10 @@ function getStatusLabel(status: string) {
   return labels[status] ?? status;
 }
 
-function formatDateTime(date: Date) {
+function formatDate(date: Date) {
   return new Intl.DateTimeFormat("zh-TW", {
     dateStyle: "medium",
-    timeStyle: "short",
+    timeZone: "Asia/Taipei",
   }).format(date);
 }
 
@@ -127,7 +127,7 @@ export default async function OrdersPage() {
                             <th className="px-4 py-3">數量／金額</th>
                             <th className="px-4 py-3">備註</th>
                             <th className="px-4 py-3">狀態</th>
-                            <th className="px-4 py-3">下單時間</th>
+                            <th className="px-4 py-3">下單日期</th>
                             <th className="px-4 py-3">操作</th>
                           </tr>
                         </thead>
@@ -160,7 +160,7 @@ export default async function OrdersPage() {
                               </td>
 
                               <td className="px-4 py-3 text-slate-500">
-                                {formatDateTime(order.createdAt)}
+                                {formatDate(order.createdAt)}
                               </td>
 
                               <td className="px-4 py-3">

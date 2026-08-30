@@ -50,7 +50,7 @@ export default async function NewGroupBuyPage() {
       <p className="mt-2 text-slate-600">
         {isHqAdmin
           ? "建立後會先儲存為草稿，尚不會發送 LINE 或開放客戶下單。"
-          : "此團只會屬於本店；建立後會先儲存為草稿，尚不會發送 LINE 或開放客戶下單。"}
+          : "此團只會屬於本店；建立後會先儲存為草稿，不會發送 LINE 或開放客戶下單。"}
       </p>
 
       <GroupBuyForm stores={stores} mode={isHqAdmin ? "HQ" : "STORE"} />

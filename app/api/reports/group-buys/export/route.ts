@@ -2,6 +2,7 @@ import ExcelJS from "exceljs";
 import { NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/app/lib/auth";
+import { formatTaiwanDate } from "@/app/lib/date";
 import { prisma } from "@/app/lib/prisma";
 import { getGroupBuyStartDateFilter } from "@/app/lib/reporting";
 
@@ -290,7 +291,7 @@ export async function GET(request: Request) {
   const detailsHeader = detailsWorksheet.getRow(1);
 
   detailsHeader.values = [
-    "收款時間",
+    "收款日期",
     "訂單編號",
     "客戶",
     "電話",
@@ -318,7 +319,7 @@ export async function GET(request: Request) {
       (a.paidAt?.getTime() ?? 0),
   )) {
     const row = detailsWorksheet.addRow({
-      paidAt: order.paidAt ?? "",
+      paidAt: order.paidAt ? formatTaiwanDate(order.paidAt) : "",
       orderNo: order.orderNo,
       customer:
         order.customer.displayName ?? "LINE 客戶",
@@ -332,9 +333,6 @@ export async function GET(request: Request) {
       quantity: order.quantity,
       amount: Number(order.totalAmount),
     });
-
-    row.getCell("paidAt").numFmt =
-      "yyyy-mm-dd hh:mm";
 
     row.getCell("unitPrice").numFmt =
       "NT$ #,##0";

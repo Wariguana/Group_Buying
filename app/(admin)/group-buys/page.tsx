@@ -31,10 +31,10 @@ function getStatusClassName(status: string) {
   }
 }
 
-function formatDateTime(value: Date) {
+function formatDate(value: Date) {
   return new Intl.DateTimeFormat("zh-TW", {
     dateStyle: "short",
-    timeStyle: "short",
+    timeZone: "Asia/Taipei",
   }).format(value);
 }
 
@@ -107,9 +107,9 @@ export default async function GroupBuysPage() {
                     NT$ {groupBuy.groupPrice.toString()}
                   </td>
                   <td className="px-5 py-4 text-sm text-slate-600">
-                    {formatDateTime(groupBuy.startAt)}
+                    {formatDate(groupBuy.startAt)}
                     <br />
-                    至 {formatDateTime(groupBuy.endAt)}
+                    至 {formatDate(groupBuy.endAt)}
                   </td>
                   <td className="px-5 py-4">
                     {groupBuy._count.groupBuyStores} 間
@@ -183,7 +183,7 @@ export default async function GroupBuysPage() {
       <h1 className="mt-2 text-3xl font-bold">團購管理</h1>
       <div className="mt-2 flex flex-wrap items-center justify-between gap-4">
         <p className="text-slate-600">
-          這裡顯示總公司指派給本店，以及本店自行建立的團購。
+          顯示總公司指派給本店，以及本店自行建立的團購。
         </p>
 
         <Link
@@ -202,7 +202,7 @@ export default async function GroupBuysPage() {
               <th className="px-5 py-4">商品</th>
               <th className="px-5 py-4">團購價</th>
               <th className="px-5 py-4">團購期間</th>
-              <th className="px-5 py-4">本店取貨時間</th>
+              <th className="px-5 py-4">本店取貨日期</th>
               <th className="px-5 py-4">狀態</th>
               <th className="px-5 py-4">操作</th>
             </tr>
@@ -224,14 +224,14 @@ export default async function GroupBuysPage() {
                   NT$ {groupBuyStore.groupBuy.groupPrice.toString()}
                 </td>
                 <td className="px-5 py-4 text-sm text-slate-600">
-                  {formatDateTime(groupBuyStore.groupBuy.startAt)}
+                  {formatDate(groupBuyStore.groupBuy.startAt)}
                   <br />
-                  至 {formatDateTime(groupBuyStore.groupBuy.endAt)}
+                  至 {formatDate(groupBuyStore.groupBuy.endAt)}
                 </td>
                 <td className="px-5 py-4 text-sm text-slate-600">
-                  {formatDateTime(groupBuyStore.pickupStart)}
+                  {formatDate(groupBuyStore.pickupStart)}
                   <br />
-                  至 {formatDateTime(groupBuyStore.pickupEnd)}
+                  至 {formatDate(groupBuyStore.pickupEnd)}
                 </td>
                 <td className="px-5 py-4">
                   <span

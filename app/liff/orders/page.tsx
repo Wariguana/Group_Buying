@@ -32,10 +32,10 @@ type CustomerOrder = {
   pickupEnd: string;
 };
 
-function formatDateTime(value: string) {
+function formatDate(value: string) {
   return new Intl.DateTimeFormat("zh-TW", {
     dateStyle: "medium",
-    timeStyle: "short",
+    timeZone: "Asia/Taipei",
   }).format(new Date(value));
 }
 
@@ -259,7 +259,7 @@ export default function CustomerOrdersPage() {
                       </div>
                       <div className="text-sm text-slate-600">
                         <p>訂單編號：{order.orderNo}</p>
-                        <p>取貨：{formatDateTime(order.pickupStart)} 至 {formatDateTime(order.pickupEnd)}</p>
+                        <p>取貨：{formatDate(order.pickupStart)} 至 {formatDate(order.pickupEnd)}</p>
                         {order.note ? <p>備註：{order.note}</p> : null}
                       </div>
                       <div className="flex items-center justify-between gap-3">

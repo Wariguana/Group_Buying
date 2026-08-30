@@ -2,6 +2,7 @@ import ExcelJS from "exceljs";
 import { NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/app/lib/auth";
+import { formatTaiwanDate } from "@/app/lib/date";
 import { prisma } from "@/app/lib/prisma";
 import { getTaiwanReportDate } from "@/app/lib/reporting";
 
@@ -194,16 +195,14 @@ export async function GET(request: Request) {
         row.groupBuy.unit ? ` (${row.groupBuy.unit})` : ""
       }`,
       statusLabels[row.groupBuy.status] ?? row.groupBuy.status,
-      row.pickupStart,
-      row.pickupEnd,
+      formatTaiwanDate(row.pickupStart),
+      formatTaiwanDate(row.pickupEnd),
       count("ORDERED"),
       count("ARRIVED"),
       count("PICKED_UP_PAID"),
       amount,
     ]);
 
-    r.getCell(5).numFmt = "yyyy-mm-dd hh:mm";
-    r.getCell(6).numFmt = "yyyy-mm-dd hh:mm";
     r.getCell(10).numFmt = "NT$ #,##0";
   }
 

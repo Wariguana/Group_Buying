@@ -33,8 +33,8 @@ const money = (value: number) =>
 const formatDate = (value: Date | null) =>
   value
     ? new Intl.DateTimeFormat("zh-TW", {
-        dateStyle: "short",
-        timeStyle: "short",
+      dateStyle: "short",
+        timeZone: "Asia/Taipei",
       }).format(value)
     : "—";
 
@@ -236,8 +236,8 @@ export default async function OrderSalesReport({ searchParams }: Props) {
                 "門市／團購",
                 "客戶／電話",
                 "商品",
-                "下單時間",
-                "收款時間",
+                "下單日期",
+                "收款日期",
                 "數量",
                 "金額",
                 "狀態",
