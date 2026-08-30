@@ -19,10 +19,9 @@ function shorten(text: string, maximumLength: number) {
     : text;
 }
 
-function formatDateTime(date: Date) {
+function formatDate(date: Date) {
   return new Intl.DateTimeFormat("zh-TW", {
     dateStyle: "short",
-    timeStyle: "short",
     timeZone: "Asia/Taipei",
   }).format(date);
 }
@@ -118,14 +117,14 @@ export async function sendGroupBuyCard(input: GroupBuyCardInput) {
                     },
                     {
                       type: "text",
-                      text: `下單截止：${formatDateTime(input.endAt)}`,
+                      text: `下單截止：${formatDate(input.endAt)}`,
                       size: "sm",
                       color: "#666666",
                       wrap: true,
                     },
                     {
                       type: "text",
-                      text: `本店取貨：${formatDateTime(input.pickupStart)} ～ ${formatDateTime(input.pickupEnd)}`,
+                      text: `本店取貨：${formatDate(input.pickupStart)} ～ ${formatDate(input.pickupEnd)}`,
                       size: "sm",
                       color: "#666666",
                       wrap: true,

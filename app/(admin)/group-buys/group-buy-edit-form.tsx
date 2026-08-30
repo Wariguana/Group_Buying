@@ -3,6 +3,10 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { toTaiwanDateInputValue } from "@/app/lib/date";
+
+import { GroupBuyImageUpload } from "./group-buy-image-upload";
+
 type StoreOption = {
   id: string;
   name: string;
@@ -46,15 +50,6 @@ type GroupBuyEditFormProps = {
   mode: "HQ" | "STORE";
 };
 
-function toLocalDateTimeInput(isoValue: string) {
-  const date = new Date(isoValue);
-  const timezoneOffset = date.getTimezoneOffset();
-
-  return new Date(date.getTime() - timezoneOffset * 60_000)
-    .toISOString()
-    .slice(0, 16);
-}
-
 function optionalValue(value: string) {
   return value.trim() ? value.trim() : undefined;
 }
@@ -87,14 +82,14 @@ export function GroupBuyEditForm({
     groupBuy.totalQuantityLimit
   );
   const [startAt, setStartAt] = useState(
-    toLocalDateTimeInput(groupBuy.startAt)
+    toTaiwanDateInputValue(groupBuy.startAt)
   );
-  const [endAt, setEndAt] = useState(toLocalDateTimeInput(groupBuy.endAt));
+  const [endAt, setEndAt] = useState(toTaiwanDateInputValue(groupBuy.endAt));
   const [defaultPickupStart, setDefaultPickupStart] = useState(
-    toLocalDateTimeInput(groupBuy.defaultPickupStart)
+    toTaiwanDateInputValue(groupBuy.defaultPickupStart)
   );
   const [defaultPickupEnd, setDefaultPickupEnd] = useState(
-    toLocalDateTimeInput(groupBuy.defaultPickupEnd)
+    toTaiwanDateInputValue(groupBuy.defaultPickupEnd)
   );
 
   const [selectedStoreIds, setSelectedStoreIds] = useState(
@@ -106,8 +101,8 @@ export function GroupBuyEditForm({
       groupBuy.groupBuyStores.map((groupBuyStore) => [
         groupBuyStore.storeId,
         {
-          pickupStart: toLocalDateTimeInput(groupBuyStore.pickupStart),
-          pickupEnd: toLocalDateTimeInput(groupBuyStore.pickupEnd),
+          pickupStart: toTaiwanDateInputValue(groupBuyStore.pickupStart),
+          pickupEnd: toTaiwanDateInputValue(groupBuyStore.pickupEnd),
         },
       ])
     )
@@ -173,7 +168,7 @@ export function GroupBuyEditForm({
     });
 
     if (hasIncompletePickupTime) {
-      setErrorMessage("請完整填寫每間參與門市的取貨時間。");
+      setErrorMessage("請完整填寫每間參與門市的取貨日期。");
       return;
     }
 
@@ -198,20 +193,18 @@ export function GroupBuyEditForm({
           minimumQuantity,
           quantityMultiple,
           totalQuantityLimit: optionalValue(totalQuantityLimit),
-          startAt: new Date(startAt).toISOString(),
-          endAt: new Date(endAt).toISOString(),
-          defaultPickupStart: new Date(defaultPickupStart).toISOString(),
-          defaultPickupEnd: new Date(defaultPickupEnd).toISOString(),
+          startAt,
+          endAt,
+          defaultPickupStart,
+          defaultPickupEnd,
           stores: selectedStoreIds.map((storeId) => ({
             storeId,
-            pickupStart: new Date(
-              isHqAdmin
-                ? pickupTimes[storeId].pickupStart
-                : defaultPickupStart
-            ).toISOString(),
-            pickupEnd: new Date(
-              isHqAdmin ? pickupTimes[storeId].pickupEnd : defaultPickupEnd
-            ).toISOString(),
+            pickupStart: isHqAdmin
+              ? pickupTimes[storeId].pickupStart
+              : defaultPickupStart,
+            pickupEnd: isHqAdmin
+              ? pickupTimes[storeId].pickupEnd
+              : defaultPickupEnd,
           })),
         }),
       });
@@ -261,14 +254,8 @@ export function GroupBuyEditForm({
           </label>
 
           <label className="grid gap-2 md:col-span-2">
-            <span className="font-medium">商品圖片網址（可留空）</span>
-            <input
-              type="url"
-              value={imageUrl}
-              onChange={(event) => setImageUrl(event.target.value)}
-              className="rounded-lg border border-slate-300 px-3 py-2"
-              placeholder="https://..."
-            />
+            <span className="font-medium">商品圖片（可留空）</span>
+            <GroupBuyImageUpload imageUrl={imageUrl} onChange={setImageUrl} />
           </label>
 
           <label className="grid gap-2">
@@ -321,20 +308,20 @@ export function GroupBuyEditForm({
       <section>
         <h2 className="text-xl font-bold">數量限制</h2>
 
-        <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <label className="grid gap-2">
+        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <label className="grid min-w-0 gap-2">
             <span className="font-medium">每人限購</span>
             <input
               type="number"
               min="1"
               value={perCustomerLimit}
               onChange={(event) => setPerCustomerLimit(event.target.value)}
-              className="rounded-lg border border-slate-300 px-3 py-2"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2"
               placeholder="不限可留空"
             />
           </label>
 
-          <label className="grid gap-2">
+          <label className="grid min-w-0 gap-2">
             <span className="font-medium">最低訂購量</span>
             <input
               type="number"
@@ -342,11 +329,11 @@ export function GroupBuyEditForm({
               value={minimumQuantity}
               onChange={(event) => setMinimumQuantity(event.target.value)}
               required
-              className="rounded-lg border border-slate-300 px-3 py-2"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2"
             />
           </label>
 
-          <label className="grid gap-2">
+          <label className="grid min-w-0 gap-2">
             <span className="font-medium">數量倍數</span>
             <input
               type="number"
@@ -354,18 +341,18 @@ export function GroupBuyEditForm({
               value={quantityMultiple}
               onChange={(event) => setQuantityMultiple(event.target.value)}
               required
-              className="rounded-lg border border-slate-300 px-3 py-2"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2"
             />
           </label>
 
-          <label className="grid gap-2">
+          <label className="grid min-w-0 gap-2">
             <span className="font-medium">總數量上限</span>
             <input
               type="number"
               min="1"
               value={totalQuantityLimit}
               onChange={(event) => setTotalQuantityLimit(event.target.value)}
-              className="rounded-lg border border-slate-300 px-3 py-2"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2"
               placeholder="不限可留空"
             />
           </label>
@@ -377,9 +364,9 @@ export function GroupBuyEditForm({
 
         <div className="mt-4 grid gap-4 md:grid-cols-2">
           <label className="grid gap-2">
-            <span className="font-medium">團購開始時間</span>
+            <span className="font-medium">團購開始日期</span>
             <input
-              type="datetime-local"
+              type="date"
               value={startAt}
               onChange={(event) => setStartAt(event.target.value)}
               required
@@ -388,9 +375,9 @@ export function GroupBuyEditForm({
           </label>
 
           <label className="grid gap-2">
-            <span className="font-medium">團購結束時間</span>
+            <span className="font-medium">團購結束日期</span>
             <input
-              type="datetime-local"
+              type="date"
               value={endAt}
               onChange={(event) => setEndAt(event.target.value)}
               required
@@ -400,10 +387,10 @@ export function GroupBuyEditForm({
 
           <label className="grid gap-2">
             <span className="font-medium">
-              {isHqAdmin ? "預設取貨開始時間" : "本店取貨開始時間"}
+              {isHqAdmin ? "預設取貨開始日期" : "本店取貨開始日期"}
             </span>
             <input
-              type="datetime-local"
+              type="date"
               value={defaultPickupStart}
               onChange={(event) => setDefaultPickupStart(event.target.value)}
               required
@@ -413,10 +400,10 @@ export function GroupBuyEditForm({
 
           <label className="grid gap-2">
             <span className="font-medium">
-              {isHqAdmin ? "預設取貨結束時間" : "本店取貨結束時間"}
+              {isHqAdmin ? "預設取貨結束日期" : "本店取貨結束日期"}
             </span>
             <input
-              type="datetime-local"
+              type="date"
               value={defaultPickupEnd}
               onChange={(event) => setDefaultPickupEnd(event.target.value)}
               required
@@ -428,9 +415,9 @@ export function GroupBuyEditForm({
 
       {isHqAdmin ? (
         <section>
-          <h2 className="text-xl font-bold">參與門市與個別取貨時間</h2>
+          <h2 className="text-xl font-bold">參與門市與個別取貨日期</h2>
           <p className="mt-2 text-sm text-slate-500">
-            新加入的門市會先使用預設取貨時間；每間門市可在下方各自調整。
+            新加入的門市會先使用預設取貨日期；每間門市可在下方各自調整。
           </p>
 
           <div className="mt-4 space-y-3">
@@ -473,10 +460,10 @@ export function GroupBuyEditForm({
                     <div className="mt-4 grid gap-4 border-t border-slate-200 pt-4 md:grid-cols-2">
                       <label className="grid gap-2">
                         <span className="text-sm font-medium">
-                          {store.name}取貨開始時間
+                          {store.name}取貨開始日期
                         </span>
                         <input
-                          type="datetime-local"
+                          type="date"
                           value={pickupTime.pickupStart}
                           onChange={(event) =>
                             updatePickupTime(
@@ -492,10 +479,10 @@ export function GroupBuyEditForm({
 
                       <label className="grid gap-2">
                         <span className="text-sm font-medium">
-                          {store.name}取貨結束時間
+                          {store.name}取貨結束日期
                         </span>
                         <input
-                          type="datetime-local"
+                          type="date"
                           value={pickupTime.pickupEnd}
                           onChange={(event) =>
                             updatePickupTime(

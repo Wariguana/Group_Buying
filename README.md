@@ -7,7 +7,8 @@
 ### 已完成
 
 - Next.js、React、TypeScript 與 Tailwind CSS 專案基礎。
-- 管理端登入畫面與暫時首頁。
+- 管理端登入畫面、權限保護與本月營運儀表板。
+- 管理員可從導覽列右側的「修改密碼」驗證目前密碼後，更新自己的登入密碼。
 - Supabase 開發資料庫與 PostgreSQL 連線。
 - Prisma 7 設定、資料模型、第一版 migration 與 Prisma Client。
 - 核心資料表：`User`、`Store`、`Customer`、`GroupBuy`、`GroupBuyStore`、`Order`。
@@ -25,16 +26,18 @@
 - 客戶 LIFF 下單：已完成 LINE 客戶驗證後，可透過固定的 `GroupBuyStore` 連結查看指定分店團購、填寫數量與備註、建立獨立訂單；不支援自行切換門市。
 - 客戶「我的訂單」：可跨分店查看訂單，依門市與團購分組；結團前可取消自己仍為「已下單」的訂單，取消後保留原訂單紀錄。
 - 管理端訂單列表：總公司可查看全部門市訂單；分店管理員只可查看自己門市的訂單。
+- 團友管理：總公司可查看全部團友的名稱、電話與加入日期；分店只可查看曾在本店下單的團友。
 - 逾期未取任務：已提供受密鑰保護、可重複執行的處理端點；正式環境尚待設定定時呼叫。
 - LINE Messaging API：已完成 webhook 驗證、群組 ID 取得與發布團購 Flex 卡片至指定門市群組。
-- 管理端報表：營運總覽、商品分析、團購分析、客戶分析與各店銷售排行；總公司可篩選門市，分店僅能查看本店資料。
+- 商品圖片上傳：管理員可上傳 JPG、PNG、WebP 圖片至 Supabase Storage；資料庫只保存圖片網址。
+- 管理端首頁儀表板：顯示進行中團購、待處理訂單與本月開團的已收款營業額；總公司看全部資料，分店只看本店資料。
+- 管理端七張報表及 Excel 匯出：商品業績、商品銷售排行、訂單銷售明細、開團商品彙總、依客戶、依開團名稱、各店銷售排行；全部依開團日期篩選，總公司可篩選門市，分店僅能查看本店資料。
 
 ### 尚未完成
 
 - 正式環境排程設定（逾期未取任務已完成，尚未安排定時呼叫）。
 - 各 API 的完整總公司／分店授權規則與帳號管理畫面。
 - 到貨通知的對象與時機確認後實作。
-- Excel 匯出。
 
 > 使用登入功能前，必須先設定 `AUTH_SECRET` 並透過 seed 建立管理員帳號；不可在程式碼中寫死帳密。
 
@@ -86,6 +89,7 @@ npm run dev
 npm run dev
 npm run lint
 npm run build
+npm run deploy:build
 npx prisma format
 npx prisma validate
 npx prisma generate
@@ -96,6 +100,18 @@ npm run db:seed
 ```
 
 `npm install` 與 `npm ci` 完成後會自動執行 `prisma generate`。`generated/` 是自動產生的 Prisma Client，已被 Git 忽略，不需提交。
+
+## 正式部署與 Prisma migration
+
+正式部署的建置指令必須使用：
+
+```powershell
+npm run deploy:build
+```
+
+它會先透過 `DIRECT_URL` 執行 `prisma migrate deploy`，再執行 Next.js production build。因此部署平台的環境變數必須設定正式資料庫的 `DATABASE_URL` 與可直接連線資料庫的 `DIRECT_URL`，且兩者不可使用本機 `.env.local` 的值。
+
+目前待套用的 migration 為 `20260830090000_add_group_buy_start_at_index`，會新增 `GroupBuy.startAt` 索引，加速報表依開團日期的查詢。部署平台的 Build Command 請設為 `npm run deploy:build`；部署後可執行 `npx prisma migrate status` 確認 migration 已套用。
 
 ## 環境變數
 
@@ -126,6 +142,18 @@ CRON_SECRET=
 
 資料庫密碼、Supabase 金鑰、LINE Secret、Access Token 都不可寫入程式碼、README 或 Git。
 
+### 商品圖片 Storage 設定
+
+在 Supabase Dashboard 的 **Storage** 建立一個名為 `group-buy-images` 的 **Public bucket**，並將 bucket 的檔案大小限制設為至少 5MB，允許的 MIME 類型設為 `image/jpeg`、`image/png`、`image/webp`。接著在 `.env.local` 與正式部署平台設定：
+
+```text
+SUPABASE_URL=https://<project-ref>.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=<Supabase service_role key>
+SUPABASE_STORAGE_BUCKET=group-buy-images
+```
+
+`SUPABASE_SERVICE_ROLE_KEY` 只能存在伺服器端環境變數，絕不能以 `NEXT_PUBLIC_` 開頭或提供給瀏覽器。商品圖片為公開素材，LIFF 客戶頁才能直接顯示。
+
 ## 初始管理員帳號
 
 先在 `.env.local` 設定 `AUTH_SECRET`。可在 PowerShell 產生一組安全值：
@@ -152,6 +180,7 @@ npm run db:seed
 - `GroupBuy.source` 區分總公司團（`HQ`）與分店自建團（`STORE`）；分店自建團以 `ownerStoreId` 固定歸屬門市。
 - 訂單連到 `GroupBuyStore`，確保訂單只能屬於有參與該團的門市。
 - 訂單保存商品名稱、單價、單位、數量與金額快照。
+- 團購與取貨採「日期」而非時分輸入；系統以 Asia/Taipei 時區保存開始日 00:00 與結束日 23:59:59.999，畫面、LINE 卡片與 Excel 僅顯示年月日。
 - 總公司、分店與客戶的權限必須在伺服器端驗證。
 
 ## 門市管理
@@ -213,7 +242,7 @@ public/                公開靜態素材
 1. 從 `main` 拉取最新程式並建立功能分支。
 2. 設定自己的 `.env.local`。
 3. 完成功能後執行 `npm run lint` 與 `npm run build`。
-4. 若 schema 有變更，建立 Prisma migration 並一併提交。
+4. 若 schema 有變更，建立 Prisma migration 並一併提交；正式部署時以 `npm run deploy:build` 套用。
 5. 建立 Pull Request，確認後再合併。
 
 ## 開發順序

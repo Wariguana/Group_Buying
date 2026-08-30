@@ -3,6 +3,8 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { GroupBuyImageUpload } from "./group-buy-image-upload";
+
 type StoreOption = {
   id: string;
   name: string;
@@ -81,10 +83,10 @@ export function GroupBuyForm({
           minimumQuantity,
           quantityMultiple,
           totalQuantityLimit: optionalValue(totalQuantityLimit),
-          startAt: new Date(startAt).toISOString(),
-          endAt: new Date(endAt).toISOString(),
-          defaultPickupStart: new Date(defaultPickupStart).toISOString(),
-          defaultPickupEnd: new Date(defaultPickupEnd).toISOString(),
+          startAt,
+          endAt,
+          defaultPickupStart,
+          defaultPickupEnd,
           ...(isHqGroup ? { storeIds: selectedStoreIds } : {}),
         }),
       });
@@ -121,7 +123,7 @@ export function GroupBuyForm({
               onChange={(event) => setTitle(event.target.value)}
               required
               className="rounded-lg border border-slate-300 px-3 py-2"
-              placeholder="例如：台糖草莓團"
+              placeholder="例如：台糖紅花籽油 2L"
             />
           </label>
 
@@ -136,14 +138,8 @@ export function GroupBuyForm({
           </label>
 
           <label className="grid gap-2 md:col-span-2">
-            <span className="font-medium">商品圖片網址（可稍後設定）</span>
-            <input
-              type="url"
-              value={imageUrl}
-              onChange={(event) => setImageUrl(event.target.value)}
-              className="rounded-lg border border-slate-300 px-3 py-2"
-              placeholder="https://..."
-            />
+            <span className="font-medium">商品圖片（可稍後設定）</span>
+            <GroupBuyImageUpload imageUrl={imageUrl} onChange={setImageUrl} />
           </label>
 
           <label className="grid gap-2">
@@ -196,20 +192,20 @@ export function GroupBuyForm({
       <section>
         <h2 className="text-xl font-bold">數量限制</h2>
 
-        <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <label className="grid gap-2">
+        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <label className="grid min-w-0 gap-2">
             <span className="font-medium">每人限購</span>
             <input
               type="number"
               min="1"
               value={perCustomerLimit}
               onChange={(event) => setPerCustomerLimit(event.target.value)}
-              className="rounded-lg border border-slate-300 px-3 py-2"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2"
               placeholder="不限可留空"
             />
           </label>
 
-          <label className="grid gap-2">
+          <label className="grid min-w-0 gap-2">
             <span className="font-medium">最低訂購量</span>
             <input
               type="number"
@@ -217,11 +213,11 @@ export function GroupBuyForm({
               value={minimumQuantity}
               onChange={(event) => setMinimumQuantity(event.target.value)}
               required
-              className="rounded-lg border border-slate-300 px-3 py-2"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2"
             />
           </label>
 
-          <label className="grid gap-2">
+          <label className="grid min-w-0 gap-2">
             <span className="font-medium">數量倍數</span>
             <input
               type="number"
@@ -229,18 +225,18 @@ export function GroupBuyForm({
               value={quantityMultiple}
               onChange={(event) => setQuantityMultiple(event.target.value)}
               required
-              className="rounded-lg border border-slate-300 px-3 py-2"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2"
             />
           </label>
 
-          <label className="grid gap-2">
+          <label className="grid min-w-0 gap-2">
             <span className="font-medium">總數量上限</span>
             <input
               type="number"
               min="1"
               value={totalQuantityLimit}
               onChange={(event) => setTotalQuantityLimit(event.target.value)}
-              className="rounded-lg border border-slate-300 px-3 py-2"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2"
               placeholder="不限可留空"
             />
           </label>
@@ -252,9 +248,9 @@ export function GroupBuyForm({
 
         <div className="mt-4 grid gap-4 md:grid-cols-2">
           <label className="grid gap-2">
-            <span className="font-medium">團購開始時間</span>
+            <span className="font-medium">團購開始日期</span>
             <input
-              type="datetime-local"
+              type="date"
               value={startAt}
               onChange={(event) => setStartAt(event.target.value)}
               required
@@ -263,9 +259,9 @@ export function GroupBuyForm({
           </label>
 
           <label className="grid gap-2">
-            <span className="font-medium">團購結束時間</span>
+            <span className="font-medium">團購結束日期</span>
             <input
-              type="datetime-local"
+              type="date"
               value={endAt}
               onChange={(event) => setEndAt(event.target.value)}
               required
@@ -274,9 +270,9 @@ export function GroupBuyForm({
           </label>
 
           <label className="grid gap-2">
-            <span className="font-medium">{isHqGroup ? "預設取貨開始時間" : "本店取貨開始時間"}</span>
+            <span className="font-medium">{isHqGroup ? "預設取貨開始日期" : "本店取貨開始日期"}</span>
             <input
-              type="datetime-local"
+              type="date"
               value={defaultPickupStart}
               onChange={(event) => setDefaultPickupStart(event.target.value)}
               required
@@ -285,9 +281,9 @@ export function GroupBuyForm({
           </label>
 
           <label className="grid gap-2">
-            <span className="font-medium">{isHqGroup ? "預設取貨結束時間" : "本店取貨結束時間"}</span>
+            <span className="font-medium">{isHqGroup ? "預設取貨結束日期" : "本店取貨結束日期"}</span>
             <input
-              type="datetime-local"
+              type="date"
               value={defaultPickupEnd}
               onChange={(event) => setDefaultPickupEnd(event.target.value)}
               required
@@ -300,7 +296,7 @@ export function GroupBuyForm({
       <section>
         <h2 className="text-xl font-bold">參與門市</h2>
         <p className="mt-2 text-sm text-slate-500">
-          建立後每間門市先使用相同的預設取貨時間，之後可個別調整。
+          建立後每間門市先使用相同的預設取貨日期，之後可個別調整。
         </p>
 
         <div className="mt-4 grid gap-3 md:grid-cols-2">

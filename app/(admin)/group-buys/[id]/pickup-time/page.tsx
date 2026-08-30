@@ -61,12 +61,12 @@ export default async function StorePickupTimePage({
         ← 回到團購詳情
       </Link>
 
-      <h1 className="mt-4 text-3xl font-bold">調整本店取貨時間</h1>
+      <h1 className="mt-4 text-3xl font-bold">調整本店取貨日期</h1>
       <p className="mt-2 text-slate-600">
         {groupBuyStore.store.name}｜{groupBuyStore.groupBuy.title}
       </p>
       <p className="mt-1 text-sm text-slate-500">
-        此操作只會更新本店的取貨時間；目前不會發送 LINE 通知。
+        此操作只會更新本店的取貨日期；目前不會發送 LINE 通知。
       </p>
 
       <StorePickupTimeForm

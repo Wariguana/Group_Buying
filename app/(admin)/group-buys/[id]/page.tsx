@@ -23,10 +23,10 @@ function getStatusLabel(status: string) {
   }
 }
 
-function formatDateTime(value: Date) {
+function formatDate(value: Date) {
   return new Intl.DateTimeFormat("zh-TW", {
     dateStyle: "short",
-    timeStyle: "short",
+    timeZone: "Asia/Taipei",
   }).format(value);
 }
 
@@ -173,7 +173,7 @@ export default async function GroupBuyDetailPage({
                 href={`/group-buys/${groupBuy.id}/pickup-time`}
                 className="rounded-lg bg-[#007F83] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#55AFB9]"
             >
-                調整本店取貨時間
+                調整本店取貨日期
             </Link>
             )}
 
@@ -214,20 +214,20 @@ export default async function GroupBuyDetailPage({
           <div className="rounded-xl bg-slate-50 p-5">
             <p className="text-sm text-slate-500">團購期間</p>
             <p className="mt-1 text-sm font-medium">
-              {formatDateTime(groupBuy.startAt)}
+              {formatDate(groupBuy.startAt)}
             </p>
             <p className="mt-1 text-sm text-slate-600">
-              至 {formatDateTime(groupBuy.endAt)}
+              至 {formatDate(groupBuy.endAt)}
             </p>
           </div>
 
           <div className="rounded-xl bg-slate-50 p-5">
-            <p className="text-sm text-slate-500">預設取貨時間</p>
+            <p className="text-sm text-slate-500">預設取貨日期</p>
             <p className="mt-1 text-sm font-medium">
-              {formatDateTime(groupBuy.defaultPickupStart)}
+              {formatDate(groupBuy.defaultPickupStart)}
             </p>
             <p className="mt-1 text-sm text-slate-600">
-              至 {formatDateTime(groupBuy.defaultPickupEnd)}
+              至 {formatDate(groupBuy.defaultPickupEnd)}
             </p>
           </div>
         </div>
@@ -271,7 +271,7 @@ export default async function GroupBuyDetailPage({
         </div>
 
         <div className="mt-8">
-          <h2 className="text-xl font-bold">參與門市與取貨時間</h2>
+          <h2 className="text-xl font-bold">參與門市與取貨日期</h2>
 
           <div className="mt-4 space-y-3">
             {visibleGroupBuyStores.map((groupBuyStore) => (
@@ -288,9 +288,9 @@ export default async function GroupBuyDetailPage({
                   </div>
 
                   <div className="text-sm text-slate-600">
-                    <p>{formatDateTime(groupBuyStore.pickupStart)}</p>
+                    <p>{formatDate(groupBuyStore.pickupStart)}</p>
                     <p className="mt-1">
-                      至 {formatDateTime(groupBuyStore.pickupEnd)}
+                      至 {formatDate(groupBuyStore.pickupEnd)}
                     </p>
                   </div>
                 </div>

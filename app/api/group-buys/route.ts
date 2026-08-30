@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/app/lib/auth";
+import { parseTaiwanDate } from "@/app/lib/date";
 import { prisma } from "@/app/lib/prisma";
 
 export const runtime = "nodejs";
@@ -101,16 +102,6 @@ function getNonNegativeNumber(value: unknown) {
     : null;
 }
 
-function getDate(value: unknown) {
-  if (typeof value !== "string") {
-    return null;
-  }
-
-  const parsedDate = new Date(value);
-
-  return Number.isNaN(parsedDate.getTime()) ? null : parsedDate;
-}
-
 export async function POST(request: Request) {
   const user = await getCurrentUser();
 
@@ -167,10 +158,10 @@ export async function POST(request: Request) {
   const minimumQuantity = getPositiveInteger(data.minimumQuantity);
   const quantityMultiple = getPositiveInteger(data.quantityMultiple);
 
-  const startAt = getDate(data.startAt);
-  const endAt = getDate(data.endAt);
-  const defaultPickupStart = getDate(data.defaultPickupStart);
-  const defaultPickupEnd = getDate(data.defaultPickupEnd);
+  const startAt = parseTaiwanDate(data.startAt);
+  const endAt = parseTaiwanDate(data.endAt, true);
+  const defaultPickupStart = parseTaiwanDate(data.defaultPickupStart);
+  const defaultPickupEnd = parseTaiwanDate(data.defaultPickupEnd, true);
 
   const storeIds = Array.isArray(data.storeIds)
     ? [...new Set(data.storeIds.filter((id): id is string => typeof id === "string"))]
@@ -211,7 +202,7 @@ export async function POST(request: Request) {
     defaultPickupEnd <= defaultPickupStart
   ) {
     return NextResponse.json(
-      { message: "請確認團購與取貨時間，結束時間必須晚於開始時間。" },
+      { message: "請確認團購與取貨日期，結束日期不可早於開始日期。" },
       { status: 400 }
     );
   }

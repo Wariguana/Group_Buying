@@ -3,20 +3,13 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { toTaiwanDateInputValue } from "@/app/lib/date";
+
 type StorePickupTimeFormProps = {
   groupBuyId: string;
   pickupStart: string;
   pickupEnd: string;
 };
-
-function toLocalDateTimeInput(isoValue: string) {
-  const date = new Date(isoValue);
-  const timezoneOffset = date.getTimezoneOffset();
-
-  return new Date(date.getTime() - timezoneOffset * 60_000)
-    .toISOString()
-    .slice(0, 16);
-}
 
 export function StorePickupTimeForm({
   groupBuyId,
@@ -25,10 +18,10 @@ export function StorePickupTimeForm({
 }: StorePickupTimeFormProps) {
   const router = useRouter();
   const [pickupStart, setPickupStart] = useState(
-    toLocalDateTimeInput(initialPickupStart)
+    toTaiwanDateInputValue(initialPickupStart)
   );
   const [pickupEnd, setPickupEnd] = useState(
-    toLocalDateTimeInput(initialPickupEnd)
+    toTaiwanDateInputValue(initialPickupEnd)
   );
   const [errorMessage, setErrorMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -37,12 +30,12 @@ export function StorePickupTimeForm({
     event.preventDefault();
 
     if (!pickupStart || !pickupEnd) {
-      setErrorMessage("請完整填寫取貨開始與結束時間。");
+      setErrorMessage("請完整填寫取貨開始與結束日期。");
       return;
     }
 
-    if (new Date(pickupEnd) <= new Date(pickupStart)) {
-      setErrorMessage("取貨結束時間必須晚於開始時間。");
+    if (pickupEnd < pickupStart) {
+      setErrorMessage("取貨結束日期不可早於開始日期。");
       return;
     }
 
@@ -58,8 +51,8 @@ export function StorePickupTimeForm({
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            pickupStart: new Date(pickupStart).toISOString(),
-            pickupEnd: new Date(pickupEnd).toISOString(),
+            pickupStart,
+            pickupEnd,
           }),
         }
       );
@@ -67,7 +60,7 @@ export function StorePickupTimeForm({
       const data = (await response.json()) as { message?: string };
 
       if (!response.ok) {
-        setErrorMessage(data.message ?? "更新取貨時間失敗。" );
+        setErrorMessage(data.message ?? "更新取貨日期失敗。" );
         return;
       }
 
@@ -87,9 +80,9 @@ export function StorePickupTimeForm({
     >
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="grid gap-2">
-          <span className="font-medium">取貨開始時間</span>
+          <span className="font-medium">取貨開始日期</span>
           <input
-            type="datetime-local"
+            type="date"
             value={pickupStart}
             onChange={(event) => setPickupStart(event.target.value)}
             required
@@ -98,9 +91,9 @@ export function StorePickupTimeForm({
         </label>
 
         <label className="grid gap-2">
-          <span className="font-medium">取貨結束時間</span>
+          <span className="font-medium">取貨結束日期</span>
           <input
-            type="datetime-local"
+            type="date"
             value={pickupEnd}
             onChange={(event) => setPickupEnd(event.target.value)}
             required
@@ -125,7 +118,7 @@ export function StorePickupTimeForm({
           disabled={isSubmitting}
           className="rounded-lg bg-[#007F83] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#55AFB9] disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {isSubmitting ? "儲存中…" : "儲存取貨時間"}
+          {isSubmitting ? "儲存中…" : "儲存取貨日期"}
         </button>
       </div>
     </form>

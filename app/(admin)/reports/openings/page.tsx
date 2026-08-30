@@ -74,7 +74,7 @@ export default async function OpeningsReportPage({
   const formatDate = (value: Date) =>
     new Intl.DateTimeFormat("zh-TW", {
       dateStyle: "short",
-      timeStyle: "short",
+      timeZone: "Asia/Taipei",
     }).format(value);
   const money = (value: number) =>
     new Intl.NumberFormat("zh-TW", {

@@ -1,6 +1,7 @@
 import ExcelJS from "exceljs";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/app/lib/auth";
+import { formatTaiwanDate } from "@/app/lib/date";
 import { prisma } from "@/app/lib/prisma";
 import { getGroupBuyStartDateFilter } from "@/app/lib/reporting";
 
@@ -132,8 +133,8 @@ export async function GET(request: Request) {
     "團購名稱",
     "客戶／電話",
     "商品",
-    "下單時間",
-    "收款時間",
+    "下單日期",
+    "收款日期",
     "數量",
     "金額",
     "狀態",
@@ -158,14 +159,12 @@ export async function GET(request: Request) {
       o.groupBuyStore.groupBuy.title,
       `${o.customer.displayName ?? "LINE 客戶"}／${o.customer.phone ?? "未填寫"}`,
       `${o.productName}${o.unit ? ` (${o.unit})` : ""}`,
-      o.createdAt,
-      o.paidAt,
+      formatTaiwanDate(o.createdAt),
+      o.paidAt ? formatTaiwanDate(o.paidAt) : "",
       o.quantity,
       Number(o.totalAmount),
       labels[o.status],
     ]);
-    r.getCell(6).numFmt = "yyyy-mm-dd hh:mm";
-    r.getCell(7).numFmt = "yyyy-mm-dd hh:mm";
     r.getCell(9).numFmt = "NT$ #,##0";
   }
   const data = await book.xlsx.writeBuffer();

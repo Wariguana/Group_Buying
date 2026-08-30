@@ -66,6 +66,12 @@ export function AdminNav({ username, role }: AdminNavProps) {
             >
               訂單管理
             </Link>
+            <Link
+              href="/customers"
+              className="rounded-lg px-3 py-2 text-slate-700 transition hover:bg-slate-100"
+            >
+              團友管理
+            </Link>
           </nav>
         </div>
         <div className="flex items-center gap-3">
@@ -75,6 +81,13 @@ export function AdminNav({ username, role }: AdminNavProps) {
               {isHqAdmin ? "總公司管理員" : "分店管理員"}
             </p>
           </div>
+
+          <Link
+            href="/account/password"
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+          >
+            修改密碼
+          </Link>
 
           <button
             type="button"

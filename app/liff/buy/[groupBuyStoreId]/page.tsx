@@ -38,10 +38,10 @@ type CreatedOrder = {
   totalAmount: string;
 };
 
-function formatDateTime(value: string) {
+function formatDate(value: string) {
   return new Intl.DateTimeFormat("zh-TW", {
     dateStyle: "medium",
-    timeStyle: "short",
+    timeZone: "Asia/Taipei",
   }).format(new Date(value));
 }
 
@@ -268,11 +268,11 @@ export default function LiffBuyPage() {
                 <p>{groupBuyStore.store.phone}</p>
               </div>
               <div className="rounded-lg bg-slate-50 p-4 text-sm text-slate-700">
-                <p className="font-medium">取貨時間</p>
+                <p className="font-medium">取貨日期</p>
                 <p className="mt-1">
-                  {formatDateTime(groupBuyStore.pickupStart)}
+                  {formatDate(groupBuyStore.pickupStart)}
                 </p>
-                <p>至 {formatDateTime(groupBuyStore.pickupEnd)}</p>
+                <p>至 {formatDate(groupBuyStore.pickupEnd)}</p>
               </div>
             </section>
 
@@ -285,7 +285,7 @@ export default function LiffBuyPage() {
                   {formatCurrency(Number(createdOrder.totalAmount))}
                 </p>
                 <p className="mt-4 text-sm">
-                  請於取貨時間到 {groupBuyStore.store.name} 取貨並現場付款。
+                  請於取貨日期到 {groupBuyStore.store.name} 取貨並現場付款。
                 </p>
                 <a
                   href="/liff/orders"

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/app/lib/auth";
+import { parseTaiwanDate } from "@/app/lib/date";
 import { prisma } from "@/app/lib/prisma";
 
 export const runtime = "nodejs";
@@ -8,16 +9,6 @@ export const runtime = "nodejs";
 type RouteContext = {
   params: Promise<{ id: string }>;
 };
-
-function getDate(value: unknown) {
-  if (typeof value !== "string") {
-    return null;
-  }
-
-  const date = new Date(value);
-
-  return Number.isNaN(date.getTime()) ? null : date;
-}
 
 export async function PATCH(request: Request, context: RouteContext) {
   const user = await getCurrentUser();
@@ -28,7 +19,7 @@ export async function PATCH(request: Request, context: RouteContext) {
 
   if (user.role !== "STORE_ADMIN" || !user.storeId) {
     return NextResponse.json(
-      { message: "只有分店管理員可以調整本店取貨時間。" },
+      { message: "只有分店管理員可以調整本店取貨日期。" },
       { status: 403 }
     );
   }
@@ -48,12 +39,12 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 
   const data = body as Record<string, unknown>;
-  const pickupStart = getDate(data.pickupStart);
-  const pickupEnd = getDate(data.pickupEnd);
+  const pickupStart = parseTaiwanDate(data.pickupStart);
+  const pickupEnd = parseTaiwanDate(data.pickupEnd, true);
 
   if (!pickupStart || !pickupEnd || pickupEnd <= pickupStart) {
     return NextResponse.json(
-      { message: "請確認取貨時間，結束時間必須晚於開始時間。" },
+      { message: "請確認取貨日期，結束日期不可早於開始日期。" },
       { status: 400 }
     );
   }

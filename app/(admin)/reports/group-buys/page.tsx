@@ -278,7 +278,7 @@ export default async function GroupBuysReportPage({
           <table className="min-w-full text-left text-sm">
             <thead className="bg-slate-100 text-slate-700">
               <tr>
-                <th className="px-4 py-3">收款時間</th>
+                <th className="px-4 py-3">收款日期</th>
                 <th className="px-4 py-3">訂單編號</th>
                 <th className="px-4 py-3">團購名稱</th>
                 <th className="px-4 py-3">客戶／電話</th>
@@ -305,7 +305,7 @@ export default async function GroupBuysReportPage({
                       {order.paidAt
                         ? new Intl.DateTimeFormat("zh-TW", {
                             dateStyle: "short",
-                            timeStyle: "short",
+                            timeZone: "Asia/Taipei",
                           }).format(order.paidAt)
                         : "—"}
                     </td>
